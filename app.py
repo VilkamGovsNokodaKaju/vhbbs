@@ -1,38 +1,41 @@
 ###############################################################################
-# app.py  –  Simple Streamlit voting service
+# app.py  –  Excel‑based Streamlit voting service
 ###############################################################################
 import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# ───────────────── CONFIGURATION ──────────────────────────────────────────────
-ADMIN_PASSWORD = "change-me"                  # ← admin secret
+# ───────────────── CONFIG ────────────────────────────────────────────────────
+ADMIN_PASSWORD = "change-me"              # secret for admin panel
 
-POSITIONS = ["pozA", "pozB"]                  # add more when needed
+POSITIONS = ["pozA", "pozB"]              # add more positions any time
 
-CANDIDATE_FILES = {                           # file per position
+CANDIDATE_FILES = {                       # one Excel file per position
     "pozA": "candidates.xlsx",
     "pozB": "candidates.xlsx",
 }
 
-CODES_CSV = Path("codes.xlsx")                 # one code per row
-VOTES_CSV = Path("votes.xlsx")                 # created by the app
+CODES_XLSX = Path("codes.xlsx")           # voter codes (one per row)
+VOTES_CSV  = Path("votes.csv")            # auto‑created
 
-# ───────────────── HELPERS ────────────────────────────────────────────────────
+# ───────────────── HELPERS ───────────────────────────────────────────────────
 def load_codes() -> set[str]:
-    """—all voter codes as a set—"""
-    if not CODES_CSV.exists():
-        st.error("codes.xlsx not found")
+    if not CODES_XLSX.exists():
+        st.error("codes.xlsx not found.")
         return set()
-    df = pd.read_csv(CODES_CSV, header=None, dtype=str)
+    df = pd.read_excel(CODES_XLSX, header=None, dtype=str)
     return set(df.iloc[:, 0].str.strip())
 
 def load_candidates(file: str) -> pd.DataFrame:
     p = Path(file)
     if not p.exists():
         return pd.DataFrame()
-    df = pd.read_csv(p) if p.suffix.lower() == ".xlsx" else pd.read_excel(p)
-    return df.dropna(axis=1, how="all")
+    try:
+        df = pd.read_excel(p, dtype=str)
+        return df.dropna(axis=1, how="all")
+    except Exception as e:
+        st.error(f"Error reading {file}: {e}")
+        return pd.DataFrame()
 
 def load_votes() -> pd.DataFrame:
     if VOTES_CSV.exists() and VOTES_CSV.stat().st_size:
@@ -47,11 +50,11 @@ def save_vote(row: dict[str, str]) -> None:
         index=False,
     )
 
-# ───────────────── SESSION STATE ──────────────────────────────────────────────
+# ───────────────── SESSION STATE ────────────────────────────────────────────
 st.session_state.setdefault("mode", "login")      # login | vote | admin
 st.session_state.setdefault("user_code", "")
 
-# ───────────────── LOGIN ─────────────────────────────────────────────────────
+# ───────────────── LOGIN ────────────────────────────────────────────────────
 if st.session_state.mode == "login":
     st.title("Secure Voting")
     code_in = st.text_input("5‑character code")
@@ -61,7 +64,7 @@ if st.session_state.mode == "login":
             st.session_state.mode = "admin"
         elif code in load_codes():
             if code in load_votes().get("code", []):
-                st.error("That code has already been used — you can’t vote twice.")
+                st.error("That code has already been used – you can’t vote twice.")
             else:
                 st.session_state.user_code = code
                 st.session_state.mode = "vote"
@@ -69,7 +72,7 @@ if st.session_state.mode == "login":
             st.error("Invalid code.")
     st.stop()
 
-# ───────────────── ADMIN PANEL ───────────────────────────────────────────────
+# ───────────────── ADMIN PANEL ──────────────────────────────────────────────
 if st.session_state.mode == "admin":
     st.title("Admin Dashboard")
     votes = load_votes()
@@ -87,21 +90,21 @@ if st.session_state.mode == "admin":
                     st.info("No votes for this position yet.")
             else:
                 st.info("No votes for this position yet.")
-    # Download
     if VOTES_CSV.exists():
-        st.download_button("Download raw CSV",
+        st.download_button("Download raw votes",
                            VOTES_CSV.read_bytes(),
-                           file_name="votes.xlsx")
-    # Clear votes (2‑click warning)
+                           file_name="votes.csv")
+
     st.markdown("---")
-    if st.button("Clear ALL votes"):
+    st.subheader("Danger Zone – wipe ALL votes")
+    if st.button("Clear votes"):
         if st.button("Really clear votes?"):
-            if st.button("YES — DELETE EVERYTHING"):
+            if st.button("YES – DELETE EVERYTHING"):
                 VOTES_CSV.unlink(missing_ok=True)
                 st.success("All votes cleared.")
     st.stop()
 
-# ───────────────── VOTING FORM ───────────────────────────────────────────────
+# ───────────────── VOTING FORM ──────────────────────────────────────────────
 if st.session_state.mode == "vote":
     st.title("Cast your vote")
     selections: dict[str, str] = {}
@@ -125,11 +128,12 @@ if st.session_state.mode == "vote":
             errors.append(f"Choose candidate for {pos}")
         else:
             selections[pos] = cand
+
     if st.button("Submit vote"):
         if errors:
-            st.error("• " + "\n• ".join(errors))
+            st.error(" • ".join(errors))
         else:
             save_vote({"code": st.session_state.user_code, **selections})
             st.success("Your vote was saved. Thank you!")
-            st.session_state.mode = "login"          # back to start
+            st.session_state.mode = "login"
 ###############################################################################
