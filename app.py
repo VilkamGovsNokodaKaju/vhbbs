@@ -78,9 +78,13 @@ if code == ADMIN_CODE:
     votes_path = find_file(VOTE_FILE)
     if votes_path and votes_path.exists():
         votes_df = pd.read_csv(votes_path, dtype=str)
-        for cat, (xlsx, csv) in CANDIDATE_FILES.items():
-            st.subheader(f"Top 10 for {cat}")
-            if cat in votes_df.columns:
+        # Determine which categories have vote columns
+        cats = [col for col in votes_df.columns if col != 'code']
+        if not cats:
+            st.info("No votes recorded yet.")
+        else:
+            for cat in cats:
+                st.subheader(f"Top 10 for {cat}")
                 counts = votes_df[cat].value_counts().head(10)
                 if not counts.empty:
                     df_top = counts.reset_index()
@@ -88,8 +92,6 @@ if code == ADMIN_CODE:
                     st.table(df_top)
                 else:
                     st.info("No votes cast in this category yet.")
-            else:
-                st.info("No votes cast in this category yet.")
         with open(votes_path, "rb") as f:
             st.download_button("Download full votes", f, file_name=votes_path.name)
     else:
@@ -171,3 +173,4 @@ elif code in df_codes:
 # Invalid code
 else:
     st.error("Invalid code.")
+
