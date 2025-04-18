@@ -105,27 +105,43 @@ def login_page():
 # Admin page
 def admin_page():
     st.header("Admin Dashboard")
+    # Show Top 10 for each defined category
     if VOTE_FILE.exists() and VOTE_FILE.stat().st_size > 0:
         try:
             df_votes = pd.read_csv(VOTE_FILE, dtype=str)
-            cats = [c for c in df_votes.columns if c != 'code']
-            if not cats:
-                st.info("No votes recorded yet.")
-            else:
-                for cat in cats:
-                    st.subheader(f"Top 10 for {cat}")
-                    counts = df_votes[cat].value_counts().head(10)
+        except Exception:
+            st.info("Error reading votes; no data to display.")
+        else:
+            for category in CANDIDATE_FILES.keys():
+                st.subheader(f"Top 10 for {category}")
+                if category in df_votes.columns:
+                    counts = df_votes[category].value_counts().head(10)
                     if not counts.empty:
                         df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
                         st.table(df_top)
                     else:
                         st.info("No votes cast in this category yet.")
-        except Exception:
-            st.info("Error reading votes; no data to display.")
+                else:
+                    st.info("No votes cast in this category yet.")
     else:
         st.info("No votes recorded yet.")
 
+    # Download raw votes
     st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
+    
+    # Clear votes (Danger Zone)
+    st.markdown("---")
+    st.subheader("Danger Zone: Clear All Votes")
+    if st.button("Clear All Votes"):
+        if st.confirm("Are you sure you want to delete all votes?", key="clear1"):
+            if st.confirm("Really REALLY sure? This cannot be undone.", key="clear2"):
+                try:
+                    VOTE_FILE.unlink()
+                    st.success("All votes have been cleared.")
+                except Exception as e:
+                    st.error(f"Error clearing votes: {e}")
+    
+    # Logout button
     if st.button("Logout"):
         reset_session()
         st.stop()
