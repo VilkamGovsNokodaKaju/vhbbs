@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# --- Configuration --------------------------------------------------------------
+# Configuration
 ADMIN_CODE = "ADMIN123"  # Change to your actual admin code
 VOTE_FILE = Path("votes.csv")
 CANDIDATE_FILES = {
@@ -10,19 +10,18 @@ CANDIDATE_FILES = {
     "Kategorija B": ("candidates.xlsx", "candidates.csv"),
 }
 
-# --- Session State Initialization ---------------------------------------------
+# Initialize session state
 if "page" not in st.session_state:
     st.session_state.page = "login"
-if "code_input" not in st.session_state:
-    st.session_state.code_input = ""
+if "code_value" not in st.session_state:
+    st.session_state.code_value = ""
 if "error" not in st.session_state:
     st.session_state.error = ""
 
-# --- Helpers --------------------------------------------------------------------
-
+# Helpers
 def reset_session():
     st.session_state.page = "login"
-    st.session_state.code_input = ""
+    st.session_state.code_value = ""
     st.session_state.error = ""
 
 
@@ -48,7 +47,7 @@ def load_codes() -> list[str]:
                 return df.iloc[:, 0].str.strip().tolist()
             except Exception as e:
                 st.error(f"Error loading codes from {path.name}: {e}")
-    st.error("No codes file found (codes.csv or codes.xlsx).")
+    st.error("Could not find codes.csv or codes.xlsx with valid codes.")
     return []
 
 
@@ -63,32 +62,31 @@ def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
                     df = pd.read_excel(path, dtype=str)
                 return df.dropna(axis=1, how="all")
             except Exception as e:
-                st.error(f"Error loading {path.name}: {e}")
-    st.error(f"No candidate file for {xlsx_name} or {csv_name}.")
+                st.error(f"Error loading candidates from {path.name}: {e}")
+    st.error(f"No candidate file found for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-# Load valid codes
-VALID_CODES = load_codes()
+# Load codes
+df_codes = load_codes()
 
-# --- UI ------------------------------------------------------------------------
+# App title
 st.title("Simple Voting Service")
 
-# --- Login Page ---------------------------------------------------------------
-if st.session_state.page == "login":
-    # Code entry
-    st.session_state.code_input = st.text_input("Enter your 5-character code:", st.session_state.code_input)
+# Login page
+def login_page():
+    st.text_input("Enter your 5-character code:", key="code_value")
     if st.button("Login"):
-        code = st.session_state.code_input.strip()
+        code = st.session_state.code_value.strip()
         if code == ADMIN_CODE:
             st.session_state.page = "admin"
             st.session_state.error = ""
-        elif code in VALID_CODES:
-            # Check repeat voting
+        elif code in df_codes:
+            # check if already voted
             if VOTE_FILE.exists():
                 try:
-                    existing = pd.read_csv(VOTE_FILE, dtype=str)
-                    if 'code' in existing.columns and code in existing['code'].tolist():
-                        st.session_state.error = "You have already voted."
+                    voted_df = pd.read_csv(VOTE_FILE, dtype=str)
+                    if 'code' in voted_df.columns and code in voted_df['code'].tolist():
+                        st.session_state.error = "You've already voted."
                     else:
                         st.session_state.page = "vote"
                         st.session_state.error = ""
@@ -100,79 +98,87 @@ if st.session_state.page == "login":
                 st.session_state.error = ""
         else:
             st.session_state.error = "Invalid code."
+        st.stop()
     if st.session_state.error:
         st.error(st.session_state.error)
-    st.stop()
 
-# --- Admin Dashboard ----------------------------------------------------------
-if st.session_state.page == "admin":
+# Admin page
+def admin_page():
     st.header("Admin Dashboard")
-    # Show Top 10 per category
     if VOTE_FILE.exists() and VOTE_FILE.stat().st_size > 0:
         try:
-            votes_df = pd.read_csv(VOTE_FILE, dtype=str)
-            for cat in CANDIDATE_FILES.keys():
-                st.subheader(f"Top 10 for {cat}")
-                if cat in votes_df.columns:
-                    counts = votes_df[cat].value_counts().head(10)
+            df_votes = pd.read_csv(VOTE_FILE, dtype=str)
+            cats = [c for c in df_votes.columns if c != 'code']
+            if not cats:
+                st.info("No votes recorded yet.")
+            else:
+                for cat in cats:
+                    st.subheader(f"Top 10 for {cat}")
+                    counts = df_votes[cat].value_counts().head(10)
                     if not counts.empty:
                         df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
                         st.table(df_top)
                     else:
                         st.info("No votes cast in this category yet.")
-                else:
-                    st.info("No votes cast in this category yet.")
         except Exception:
-            st.info("No votes recorded yet.")
+            st.info("Error reading votes; no data to display.")
     else:
         st.info("No votes recorded yet.")
+
     st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
     if st.button("Logout"):
         reset_session()
-    st.stop()
+        st.stop()
 
-# --- Voting Page --------------------------------------------------------------
-if st.session_state.page == "vote":
-    st.success("Welcome! Please cast your vote for each category.")
-    vote_data = {'code': st.session_state.code_input.strip()}
+# Voting page
+def vote_page():
+    st.success("Welcome! Cast your vote for each category.")
+    vote_data = {'code': st.session_state.code_value.strip()}
     errors = []
     for cat, (xlsx, csv) in CANDIDATE_FILES.items():
         st.subheader(cat)
         df = load_candidates(xlsx, csv)
         if df.empty:
-            errors.append(f"No candidate data for {cat}.")
+            errors.append(f"No data for {cat}.")
             continue
         subcats = df.columns.tolist()
-        chosen_sub = st.selectbox(f"Select subcategory for {cat}", ["-- Select --"] + subcats, key=f"sub_{cat}")
-        opts = df[chosen_sub].dropna().tolist() if chosen_sub != "-- Select --" else []
-        chosen_cand = st.selectbox(f"Select candidate for {cat}", ["-- Select --"] + opts, key=f"cand_{cat}")
+        chosen_sub = st.selectbox(f"Subcategory ({cat}):", ["-- Select --"] + subcats, key=f"sub_{cat}")
+        options = df[chosen_sub].dropna().tolist() if chosen_sub != "-- Select --" else []
+        chosen_cand = st.selectbox(f"Candidate ({cat}):", ["-- Select --"] + options, key=f"cand_{cat}")
         if chosen_sub == "-- Select --":
-            errors.append(f"Choose a subcategory for {cat}.")
+            errors.append(f"Select subcategory for {cat}.")
         if chosen_cand == "-- Select --":
-            errors.append(f"Choose a candidate for {cat}.")
+            errors.append(f"Select candidate for {cat}.")
         else:
             vote_data[cat] = chosen_cand
+
     if st.button("Submit Vote"):
         if errors:
             st.error("\n".join(errors))
         else:
             try:
-                pd.DataFrame([vote_data]).to_csv(
-                    VOTE_FILE,
-                    mode="a" if VOTE_FILE.exists() else "w",
-                    header=not VOTE_FILE.exists(),
-                    index=False
-                )
-                st.session_state.page = "thanks"
-                st.experimental_rerun = None  # disable any accidental old calls
+                pd.DataFrame([vote_data]).to_csv(VOTE_FILE, mode="a" if VOTE_FILE.exists() else "w", header=not VOTE_FILE.exists(), index=False)
+                st.session_state.page = "thankyou"
+                st.stop()
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
-    st.stop()
 
-# --- Thank You Page -----------------------------------------------------------
-if st.session_state.page == "thanks":
+# Thank you page
+def thankyou_page():
     st.header("Thank You!")
-    st.write("Your vote has been successfully recorded.")
-    if st.button("New session"):
+    st.write("Your vote has been recorded.")
+    if st.button("New Session"):
         reset_session()
-    st.stop()
+        st.stop()
+
+# Render pages
+if st.session_state.page == "login":
+    login_page()
+elif st.session_state.page == "admin":
+    admin_page()
+elif st.session_state.page == "vote":
+    vote_page()
+elif st.session_state.page == "thankyou":
+    thankyou_page()
+else:
+    reset_session()
