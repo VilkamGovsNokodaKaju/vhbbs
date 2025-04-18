@@ -15,7 +15,7 @@ CANDIDATE_FILES = {
 st.title("Simple Voting Service")
 
 # Show thank-you screen if redirected here
-params = st.experimental_get_query_params()
+params = st.query_params
 if "thanks" in params:
     st.header("Thank You!")
     st.write("Your vote has been successfully recorded.")
@@ -104,12 +104,11 @@ def show_admin():
         # Clear votes section
         st.markdown("---")
         st.subheader("Danger Zone: Clear All Votes")
-        # Red-styled clear button
         st.markdown(
             "<style>div.clear-button > button {background-color:red;color:white;}</style>",
             unsafe_allow_html=True
         )
-        if st.button("Clear All Votes", key="clear", help="This will delete ALL votes permanently:", args=(), kwargs={}, on_click=None, css_class="clear-button"):
+        if st.button("Clear All Votes", key="clear", css_class="clear-button"):
             if st.confirm("Are you sure?", key="confirm1"):
                 if st.confirm("Are you really really sure?", key="confirm2"):
                     try:
@@ -149,16 +148,19 @@ def show_voter():
         if df.empty:
             st.warning(f"No candidate data for {cat}.")
             continue
+
         subs = df.columns.tolist()
         choice_sub = st.selectbox(f"Select subcategory for {cat}", ["-- Select --"] + subs, key=f"sub_{cat}")
         sub_opts = df[choice_sub].dropna().tolist() if choice_sub != "-- Select --" else []
         choice_cand = st.selectbox(f"Select candidate for {cat}", ["-- Select --"] + sub_opts, key=f"cand_{cat}")
+
         if choice_sub == "-- Select --":
             errors.append(f"Please choose a subcategory for {cat}.")
         if choice_cand == "-- Select --":
             errors.append(f"Please choose a candidate for {cat}.")
         else:
             vote_data[cat] = choice_cand
+
     if st.button("Submit Vote"):
         if errors:
             st.error("\n".join(errors))
@@ -167,7 +169,8 @@ def show_voter():
                 new_df = pd.DataFrame([vote_data])
                 out_path = votes_path if votes_path else Path(VOTE_FILE)
                 new_df.to_csv(out_path, mode="a" if out_path.exists() else "w", header=not out_path.exists(), index=False)
-                st.experimental_set_query_params(thanks="1")
+                # Redirect to thank you screen
+                st.query_params = {"thanks": ["1"]}
                 st.experimental_rerun()
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
@@ -179,6 +182,3 @@ elif code in df_codes:
     show_voter()
 else:
     st.error("Invalid code.")
-
-
-
