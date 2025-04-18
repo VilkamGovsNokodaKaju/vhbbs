@@ -1,17 +1,3 @@
-import streamlit as st
-import pandas as pd
-from pathlib import Path
-
-# Configuration
-ADMIN_CODE = "ADMIN123"  # Change to your actual admin code
-VOTE_FILE = "votes.csv"
-
-# Candidate category mapping: category -> (xlsx_filename, csv_filename)
-CANDIDATE_FILES = {
-    "candidates": ("candidates.xlsx", "candidates.csv"),
-    "candidates": ("candidates.xlsx", "candidates.csv"),
-}
-
 st.title("Simple Voting Service")
 
 @st.cache_data
@@ -26,7 +12,7 @@ def find_file(name: str) -> Path | None:
     return None
 
 @st.cache_data
-def load_codes():
+def load_codes() -> list:
     """Load list of valid voter codes from CSV or XLSX."""
     for name in ("codes.csv", "codes.xlsx"):
         path = find_file(name)
@@ -63,7 +49,8 @@ def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     st.error(f"No candidate file found for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-codes = load_codes()
+# Load codes
+df_codes = load_codes()
 
 # Login screen
 code = st.text_input("Enter your 5-character code:")
@@ -95,13 +82,13 @@ if code == ADMIN_CODE:
         st.info("No votes recorded yet.")
 
 # Voter view
-elif code in codes:
+elif code in df_codes:
     # Prevent double voting
     votes_path = find_file(VOTE_FILE)
     if votes_path and votes_path.exists():
         try:
             existing = pd.read_csv(votes_path, dtype=str)
-            if code in existing.get('code', []).tolist():
+            if code in existing.get('code', []):
                 st.warning("Our records show you've already voted. Thank you!")
                 st.stop()
         except Exception as e:
@@ -109,37 +96,64 @@ elif code in codes:
             st.stop()
 
     st.success("Welcome! Please cast your vote for each category.")
-    vote = {"code": code}
+    vote_data = {"code": code}
     errors = []
+
+    # Show all categories upfront
     for cat, (xlsx, csv) in CANDIDATE_FILES.items():
         st.subheader(cat)
         df = load_candidates(xlsx, csv)
         if df.empty:
             st.warning(f"No candidate data for {cat}.")
             continue
+
         subs = df.columns.tolist()
-        choice_sub = st.selectbox(f"Select subcategory for {cat}", ["-- Select --"] + subs, key=f"sub_{cat}")
+        # Subcategory select
+        choice_sub = st.selectbox(
+            f"Select subcategory for {cat}",
+            ["-- Select --"] + subs,
+            key=f"sub_{cat}"
+        )
         if choice_sub == "-- Select --":
-            errors.append(f"Subcategory for {cat} not selected.")
-            continue
-        opts = df[choice_sub].dropna().tolist()
-        choice_cand = st.selectbox(f"Select candidate for {cat}", ["-- Select --"] + opts, key=f"cand_{cat}")
-        if choice_cand == "-- Select --":
-            errors.append(f"Candidate for {cat} not selected.")
+            sub_opts = []
         else:
-            vote[cat] = choice_cand
+            # valid subcategory chosen
+            sub_opts = df[choice_sub].dropna().tolist()
+
+        # Candidate select always visible
+        choice_cand = st.selectbox(
+            f"Select candidate for {cat}",
+            ["-- Select --"] + sub_opts,
+            key=f"cand_{cat}"
+        )
+
+        # Validation
+        if choice_sub == "-- Select --":
+            errors.append(f"Please choose a subcategory for {cat}.")
+        if choice_cand == "-- Select --":
+            errors.append(f"Please choose a candidate for {cat}.")
+        else:
+            vote_data[cat] = choice_cand
+
+    # Submit button
     if st.button("Submit Vote"):
         if errors:
             st.error("\n".join(errors))
         else:
             try:
-                new_df = pd.DataFrame([vote])
-                votes_path = votes_path or Path(VOTE_FILE)
-                new_df.to_csv(votes_path, mode="a" if votes_path.exists() else "w", header=not votes_path.exists(), index=False)
+                new_df = pd.DataFrame([vote_data])
+                out_path = votes_path if votes_path else Path(VOTE_FILE)
+                new_df.to_csv(
+                    out_path,
+                    mode="a" if out_path.exists() else "w",
+                    header=not out_path.exists(),
+                    index=False
+                )
                 st.success("Your vote has been recorded. Thank you!")
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
         st.stop()
 
+# Invalid code
 else:
     st.error("Invalid code.")
