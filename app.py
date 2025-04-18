@@ -10,24 +10,26 @@ CANDIDATE_FILES = {
     "Kategorija B": ("candidates.xlsx", "candidates.csv"),
 }
 
-# --- Initialize session state --------------------------------------------------
+# Initialize vote flag
 if "voted" not in st.session_state:
     st.session_state.voted = False
+# Initialize clear_confirm
+if "clear_confirm" not in st.session_state:
+    st.session_state.clear_confirm = 0
 
-# --- Helper functions ----------------------------------------------------------
+# --- Helpers --------------------------------------------------------------------
+
 def find_file(name: str) -> Path | None:
-    """Locate a file in the working directory, case-insensitive."""
+    """Case-insensitive file finder in app directory."""
     p = Path(name)
-    if p.exists():
-        return p
+    if p.exists(): return p
     for f in Path().iterdir():
-        if f.name.lower() == name.lower():
-            return f
+        if f.name.lower() == name.lower(): return f
     return None
 
 
 def load_codes() -> list[str]:
-    """Load valid voter codes from CSV/XLSX."""
+    """Load valid voter codes from codes.csv or codes.xlsx."""
     for fname in ("codes.csv", "codes.xlsx"):
         path = find_file(fname)
         if path:
@@ -44,73 +46,65 @@ def load_codes() -> list[str]:
 
 
 def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
-    """Load candidate subcategory matrix for a category."""
+    """Load candidate matrix for a category from CSV or XLSX."""
     for fname in (csv_name, xlsx_name):
         path = find_file(fname)
         if path:
             try:
-                if path.suffix.lower() == ".csv":
-                    df = pd.read_csv(path, dtype=str)
-                else:
-                    df = pd.read_excel(path, dtype=str)
+                df = pd.read_csv(path, dtype=str) if path.suffix.lower() == ".csv" else pd.read_excel(path, dtype=str)
                 return df.dropna(axis=1, how="all")
             except Exception as e:
                 st.error(f"Error loading {path.name}: {e}")
     st.error(f"No candidate file for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-# Load codes once
-VALID_CODES = load_codes()
+# Load valid codes once
+df_codes = load_codes()
 
 # --- UI ------------------------------------------------------------------------
 st.title("Simple Voting Service")
 
-# Login input (stored in session_state)
+# Login input
 st.text_input("Enter your 5-character code:", key="code_input")
-code = st.session_state.code_input.strip()
+code = st.session_state.get("code_input", "").strip()
 if not code:
     st.stop()
 
-# --- Thank-you screen for one-time voters -------------------------------------
+# --- Thank-you screen ---------------------------------------------------------
 if st.session_state.voted:
     st.header("Thank You!")
     st.write("Your vote has been successfully recorded.")
     if st.button("Back to login"):
         st.session_state.voted = False
-        st.session_state.code_input = ""
-        # reset clear confirmation if any
         st.session_state.clear_confirm = 0
+        st.session_state.code_input = ""
     st.stop()
 
 # --- Admin Dashboard ----------------------------------------------------------
 def show_admin():
     st.header("Admin Dashboard")
     if VOTE_FILE.exists():
-        try:
-            votes_df = pd.read_csv(VOTE_FILE, dtype=str)
-        except Exception:
-            st.error("Could not read votes.csv")
-            return
-        cats = [c for c in votes_df.columns if c != 'code']
-        if not cats:
-            st.info("No votes recorded yet.")
-        else:
-            for cat in cats:
-                st.subheader(f"Top 10 for {cat}")
-                top = votes_df[cat].value_counts().head(10)
-                st.table(top.rename_axis('Candidate').reset_index(name='Votes'))
+        votes_df = pd.read_csv(VOTE_FILE, dtype=str)
+        for cat in CANDIDATE_FILES.keys():
+            st.subheader(f"Top 10 for {cat}")
+            if cat in votes_df.columns:
+                counts = votes_df[cat].value_counts().head(10)
+                if not counts.empty:
+                    df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
+                    st.table(df_top)
+                else:
+                    st.info("No votes cast in this category yet.")
+            else:
+                st.info("No votes cast in this category yet.")
         st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
         st.markdown("---")
         st.subheader("Danger Zone: Clear All Votes")
-        # Two-step confirmation
-        if "clear_confirm" not in st.session_state:
-            st.session_state.clear_confirm = 0
         if st.session_state.clear_confirm == 0:
             if st.button("Clear All Votes"):
                 st.session_state.clear_confirm = 1
         elif st.session_state.clear_confirm == 1:
             st.warning("Are you sure?")
-            if st.button("Yes, clear votes" , key="confirm1"):
+            if st.button("Yes, clear votes", key="confirm1"):
                 st.session_state.clear_confirm = 2
             if st.button("Cancel", key="cancel1"):
                 st.session_state.clear_confirm = 0
@@ -128,9 +122,9 @@ def show_admin():
     else:
         st.info("No votes recorded yet.")
 
-# --- Voter interface ----------------------------------------------------------
+# --- Voter Interface ----------------------------------------------------------
 def show_voter():
-    # Block repeat voting
+    # Prevent repeat voting
     if VOTE_FILE.exists():
         try:
             existing = pd.read_csv(VOTE_FILE, dtype=str)
@@ -170,10 +164,10 @@ def show_voter():
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
 
-# --- Main ---------------------------------------------------------------------
+# --- Main Logic ---------------------------------------------------------------
 if code == ADMIN_CODE:
     show_admin()
-elif code in VALID_CODES:
+elif code in df_codes:
     show_voter()
 else:
     st.error("Invalid code.")
