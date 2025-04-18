@@ -41,7 +41,7 @@ st.session_state.setdefault("wipe_step", 0)
 # ────────── LOGIN ────────────────────────────────────────────────────────────
 if st.session_state.page == "login":
     st.title("Hāgena balva 2025")
-    code_in = st.text_input("5‑character code")
+    code_in = st.text_input("Unikālais balsošanas kods")
     if st.button("Autentificēties"):
         code = code_in.strip()
         if code == ADMIN_PASSWORD:
@@ -59,19 +59,19 @@ if st.session_state.page == "login":
 
 # ────────── ADMIN PANEL ──────────────────────────────────────────────────────
 if st.session_state.page == "admin":
-    st.title("Admin Dashboard")
+    st.title("Administratora pieeja")
     votes = load_votes()
     if votes.empty:
         st.info("Neviena balss nav reģistrēta")
     else:
         for pos in POSITIONS:
-            st.subheader(f"Top 7 for {pos}")
+            st.subheader(f"Nominācijā {pos}")
             if pos in votes.columns:
                 top = votes[pos].value_counts().head(7)
                 if top.empty:
                     st.info("Neviena balss šajā pozīcijā nav reģistrēta")
                 else:
-                    st.table(top.rename_axis("Candidate").reset_index(name="Votes"))
+                    st.table(top.rename_axis("Kandidāts").reset_index(name="Balsis"))
             else:
                 st.info("Neviena balss šajā pozīcijā nav reģistrēta")
 
@@ -106,10 +106,10 @@ if st.session_state.page == "vote":
         df = load_candidates(CANDIDATE_FILES[pos])
         if df.empty:
             st.error(f"Nav atrasts kandidātu fails {pos}."); st.stop()
-        sub = st.selectbox("Sub‑category", [""]+df.columns.tolist(), key=f"s_{pos}")
+        sub = st.selectbox("Meklēt klasē/sadaļā...", [""]+df.columns.tolist(), key=f"s_{pos}")
         if not sub:
-            errs.append(f"Pick sub‑category for {pos}"); continue
-        cand = st.selectbox("Candidate", [""]+df[sub].dropna().tolist(), key=f"c_{pos}")
+            errs.append(f"Izvēlēties klasi/sadaļu nominācijā {pos}"); continue
+        cand = st.selectbox("Kandidāts", [""]+df[sub].dropna().tolist(), key=f"c_{pos}")
         if not cand:
             errs.append(f"Nominācija {pos}")
         else:
