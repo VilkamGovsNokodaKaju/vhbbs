@@ -1,3 +1,17 @@
+import streamlit as st
+import pandas as pd
+from pathlib import Path
+
+# Configuration
+ADMIN_CODE = "ADMIN123"  # Change to your actual admin code
+VOTE_FILE = "votes.csv"
+
+# Candidate category mapping: category -> (xlsx_filename, csv_filename)
+CANDIDATE_FILES = {
+    "Kategorija A": ("candidates.xlsx", "candidates.csv"),
+    "Kategorija B": ("candidates.xlsx", "candidates.csv"),
+}
+
 st.title("Simple Voting Service")
 
 @st.cache_data
