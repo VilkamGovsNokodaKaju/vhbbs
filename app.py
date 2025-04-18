@@ -56,12 +56,15 @@ if st.session_state.mode == "login":
         code = code.strip()
         if code == ADMIN_PASSWORD:
             st.session_state.mode = "admin"
+
         elif code in load_codes():
-            if code in load_votes().get("code", []):   # ❶ DUPLICATE CHECK
-                st.error("That code has already voted.")
+            votes = load_votes()                            # ← fresh read
+            if "code" in votes.columns and code in votes["code"].values:
+                st.error("That code has already been used – you can’t vote twice.")
             else:
-                st.session_state.mode = "vote"
                 st.session_state.user_code = code
+                st.session_state.mode = "vote"
+
         else:
             st.error("Invalid code.")
     st.stop()
