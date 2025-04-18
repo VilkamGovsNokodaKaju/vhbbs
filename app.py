@@ -8,8 +8,8 @@ VOTE_FILE = "votes.csv"
 
 # Candidate category mapping: category -> (xlsx_filename, csv_filename)
 CANDIDATE_FILES = {
-    "CategoryA": ("categoryA.xlsx", "categoryA.csv"),
-    "CategoryB": ("categoryB.xlsx", "categoryB.csv"),
+    "candidates": ("candidates.xlsx", "candidates.csv"),
+    "candidates": ("candidates.xlsx", "candidates.csv"),
 }
 
 st.title("Simple Voting Service")
