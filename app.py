@@ -63,7 +63,7 @@ def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     st.error(f"No candidate file found for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-# Load codes
+# Load valid codes
 df_codes = load_codes()
 
 # Login screen
@@ -78,7 +78,7 @@ if code == ADMIN_CODE:
     votes_path = find_file(VOTE_FILE)
     if votes_path and votes_path.exists():
         votes_df = pd.read_csv(votes_path, dtype=str)
-        # Determine which categories have vote columns
+        # Determine categories from votes file
         cats = [col for col in votes_df.columns if col != 'code']
         if not cats:
             st.info("No votes recorded yet.")
@@ -99,17 +99,23 @@ if code == ADMIN_CODE:
 
 # Voter view
 elif code in df_codes:
-    # Prevent double voting
+    # Prevent double voting by handling empty or missing vote file gracefully
     votes_path = find_file(VOTE_FILE)
+    voted_already = False
     if votes_path and votes_path.exists():
         try:
             existing = pd.read_csv(votes_path, dtype=str)
-            if code in existing.get('code', []):
-                st.warning("Our records show you've already voted. Thank you!")
-                st.stop()
+            if 'code' in existing.columns and code in existing['code'].tolist():
+                voted_already = True
+        except pd.errors.EmptyDataError:
+            # Empty file: treat as no votes yet
+            voted_already = False
         except Exception as e:
             st.error(f"Error checking previous votes: {e}")
             st.stop()
+    if voted_already:
+        st.warning("Our records show you've already voted. Thank you!")
+        st.stop()
 
     st.success("Welcome! Please cast your vote for each category.")
     vote_data = {"code": code}
@@ -133,7 +139,6 @@ elif code in df_codes:
         if choice_sub == "-- Select --":
             sub_opts = []
         else:
-            # valid subcategory chosen
             sub_opts = df[choice_sub].dropna().tolist()
 
         # Candidate select always visible
@@ -158,7 +163,7 @@ elif code in df_codes:
         else:
             try:
                 new_df = pd.DataFrame([vote_data])
-                out_path = votes_path if votes_path else Path(VOTE_FILE)
+                out_path = votes_path or Path(VOTE_FILE)
                 new_df.to_csv(
                     out_path,
                     mode="a" if out_path.exists() else "w",
@@ -173,4 +178,5 @@ elif code in df_codes:
 # Invalid code
 else:
     st.error("Invalid code.")
+
 
