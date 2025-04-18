@@ -8,16 +8,15 @@ VOTE_FILE = "votes.csv"
 
 # Candidate category mapping: category -> (xlsx_filename, csv_filename)
 CANDIDATE_FILES = {
-    "CategoryA": ("candidates.xlsx", "candidates.csv"),
-    "CategoryB": ("candidates", "candidates.csv"),
+    "CategoryA": ("categoryA.xlsx", "categoryA.csv"),
+    "CategoryB": ("categoryB.xlsx", "categoryB.csv"),
 }
 
 st.title("Simple Voting Service")
 
-# Helper to find a file by name, case-insensitive
 @st.cache_data
-
 def find_file(name: str) -> Path | None:
+    """Locate a file in the working directory, case-insensitive."""
     p = Path(name)
     if p.exists():
         return p
@@ -28,7 +27,7 @@ def find_file(name: str) -> Path | None:
 
 @st.cache_data
 def load_codes():
-    # Try CSV first, then XLSX
+    """Load list of valid voter codes from CSV or XLSX."""
     for name in ("codes.csv", "codes.xlsx"):
         path = find_file(name)
         if path:
@@ -41,12 +40,12 @@ def load_codes():
             except Exception as e:
                 st.error(f"Error loading codes from {path.name}: {e}")
                 return []
-    st.error("No codes file found (codes.csv or codes.xlsx) in app directory.")
+    st.error("No codes file found (codes.csv or codes.xlsx).")
     return []
 
 @st.cache_data
 def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
-    # CSV fallback
+    """Load candidate matrix for a category from CSV or XLSX."""
     path_csv = find_file(csv_name)
     if path_csv:
         try:
@@ -78,26 +77,40 @@ if code == ADMIN_CODE:
     votes_path = find_file(VOTE_FILE)
     if votes_path and votes_path.exists():
         votes_df = pd.read_csv(votes_path, dtype=str)
-        results = []
         for cat, (xlsx, csv) in CANDIDATE_FILES.items():
+            st.subheader(f"Top 10 for {cat}")
             if cat in votes_df.columns:
-                counts = votes_df[cat].value_counts()
+                counts = votes_df[cat].value_counts().head(10)
                 if not counts.empty:
-                    top, cnt = counts.idxmax(), counts.max()
-                    results.append({"Category": cat, "Top": top, "Votes": cnt})
-        if results:
-            st.table(pd.DataFrame(results))
-            with open(votes_path, "rb") as f:
-                st.download_button("Download votes", f, file_name=votes_path.name)
-        else:
-            st.info("No votes recorded yet.")
+                    df_top = counts.reset_index()
+                    df_top.columns = ["Candidate", "Votes"]
+                    st.table(df_top)
+                else:
+                    st.info("No votes cast in this category yet.")
+            else:
+                st.info("No votes cast in this category yet.")
+        with open(votes_path, "rb") as f:
+            st.download_button("Download full votes", f, file_name=votes_path.name)
     else:
         st.info("No votes recorded yet.")
 
 # Voter view
 elif code in codes:
-    st.success("Welcome! Cast your votes below.")
+    # Prevent double voting
+    votes_path = find_file(VOTE_FILE)
+    if votes_path and votes_path.exists():
+        try:
+            existing = pd.read_csv(votes_path, dtype=str)
+            if code in existing.get('code', []).tolist():
+                st.warning("Our records show you've already voted. Thank you!")
+                st.stop()
+        except Exception as e:
+            st.error(f"Error checking previous votes: {e}")
+            st.stop()
+
+    st.success("Welcome! Please cast your vote for each category.")
     vote = {"code": code}
+    errors = []
     for cat, (xlsx, csv) in CANDIDATE_FILES.items():
         st.subheader(cat)
         df = load_candidates(xlsx, csv)
@@ -105,21 +118,27 @@ elif code in codes:
             st.warning(f"No candidate data for {cat}.")
             continue
         subs = df.columns.tolist()
-        choice_sub = st.selectbox(f"Subcategory for {cat}", subs, key=f"sub_{cat}")
-        opts = df[choice_sub].dropna().tolist()
-        if not opts:
-            st.warning(f"No candidates under {choice_sub}.")
+        choice_sub = st.selectbox(f"Select subcategory for {cat}", ["-- Select --"] + subs, key=f"sub_{cat}")
+        if choice_sub == "-- Select --":
+            errors.append(f"Subcategory for {cat} not selected.")
             continue
-        vote_choice = st.radio(f"Choose for {cat}", opts, key=f"rad_{cat}")
-        vote[cat] = vote_choice
+        opts = df[choice_sub].dropna().tolist()
+        choice_cand = st.selectbox(f"Select candidate for {cat}", ["-- Select --"] + opts, key=f"cand_{cat}")
+        if choice_cand == "-- Select --":
+            errors.append(f"Candidate for {cat} not selected.")
+        else:
+            vote[cat] = choice_cand
     if st.button("Submit Vote"):
-        new_df = pd.DataFrame([vote])
-        votes_path = find_file(VOTE_FILE) or Path(VOTE_FILE)
-        try:
-            new_df.to_csv(votes_path, mode="a" if votes_path.exists() else "w", header=not votes_path.exists(), index=False)
-            st.success("Your vote has been recorded. Thank you!")
-        except Exception as e:
-            st.error(f"Error saving vote: {e}")
+        if errors:
+            st.error("\n".join(errors))
+        else:
+            try:
+                new_df = pd.DataFrame([vote])
+                votes_path = votes_path or Path(VOTE_FILE)
+                new_df.to_csv(votes_path, mode="a" if votes_path.exists() else "w", header=not votes_path.exists(), index=False)
+                st.success("Your vote has been recorded. Thank you!")
+            except Exception as e:
+                st.error(f"Error saving vote: {e}")
         st.stop()
 
 else:
