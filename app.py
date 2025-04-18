@@ -7,7 +7,7 @@ WIPE_PASSWORD  = st.secrets["auth"]["wipe_password"]
 
 VOTER_CODES = set(st.secrets["codes"]["list"])           
 
-POSITIONS = ["pozA", "pozB"]
+POSITIONS = ["NominacijaA", "NominacijaB"]
 CANDIDATE_FILES = {            
     "NominacijaA": "candidates.xlsx",
     "NominacijaB": "candidates.xlsx",
