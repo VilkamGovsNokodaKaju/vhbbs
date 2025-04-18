@@ -11,7 +11,7 @@ ADMIN_PASSWORD = "change-me"                  # admin secret
 POSITIONS = ["pozA", "pozB"]                  # add more positions any time
 CANDIDATE_FILES = {                           # one Excel file per position
     "pozA": "candidates.xlsx",
-    "pozB": "candidatesB.xlsx",
+    "pozB": "candidates.xlsx",
 }
 
 CODES_XLSX = Path("codes.xlsx")               # one code per row
