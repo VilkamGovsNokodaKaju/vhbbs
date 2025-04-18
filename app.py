@@ -13,8 +13,7 @@ CANDIDATE_FILES = {
     "pozB": "candidates.xlsx",
 }
 
-VOTES_CSV = Path("votes.csv")    # created automatically
-
+VOTES_CSV = Path("votes.csv")
 # ────────── HELPERS ──────────────────────────────────────────────────────────
 def load_candidates(xlsx: str) -> pd.DataFrame:
     p = Path(xlsx)
@@ -41,21 +40,21 @@ st.session_state.setdefault("wipe_step", 0)
 
 # ────────── LOGIN ────────────────────────────────────────────────────────────
 if st.session_state.page == "login":
-    st.title("Secure Voting")
+    st.title("Hāgena balva 2025")
     code_in = st.text_input("5‑character code")
-    if st.button("Login"):
+    if st.button("Autentificēties"):
         code = code_in.strip()
         if code == ADMIN_PASSWORD:
             st.session_state.page = "admin"
         elif code in VOTER_CODES:
             votes = load_votes()
             if "code" in votes.columns and code in votes["code"].values:
-                st.error("That code has already voted.")
+                st.error("Šis kods jau ticis izmantots!")
             else:
                 st.session_state.user_code = code
                 st.session_state.page = "vote"
         else:
-            st.error("Invalid code.")
+            st.error("Kods nav atrasts.")
     st.stop()
 
 # ────────── ADMIN PANEL ──────────────────────────────────────────────────────
@@ -63,63 +62,63 @@ if st.session_state.page == "admin":
     st.title("Admin Dashboard")
     votes = load_votes()
     if votes.empty:
-        st.info("No votes recorded yet.")
+        st.info("Neviena balss nav reģistrēta")
     else:
         for pos in POSITIONS:
             st.subheader(f"Top 7 for {pos}")
             if pos in votes.columns:
                 top = votes[pos].value_counts().head(7)
                 if top.empty:
-                    st.info("No votes for this position yet.")
+                    st.info("Neviena balss šajā pozīcijā nav reģistrēta")
                 else:
                     st.table(top.rename_axis("Candidate").reset_index(name="Votes"))
             else:
-                st.info("No votes for this position yet.")
+                st.info("Neviena balss šajā pozīcijā nav reģistrēta")
 
     if VOTES_CSV.exists():
-        st.download_button("Download votes.csv", VOTES_CSV.read_bytes(), "votes.csv")
+        st.download_button("Ielādēt balsis failā votes.csv", VOTES_CSV.read_bytes(), "votes.csv")
 
     st.markdown("---")
-    st.subheader("Danger Zone – wipe ALL votes")
+    st.subheader("Spēlēt Dievu")
     if st.session_state.wipe_step == 0:
-        if st.button("Clear votes"):
+        if st.button("Dzēst visus balsošanas datus"):
             st.session_state.wipe_step = 1
     elif st.session_state.wipe_step == 1:
-        pwd = st.text_input("Wipe password", type="password")
+        pwd = st.text_input("Dzēšanas parole", type="password")
         col1, col2 = st.columns(2)
-        if col1.button("CONFIRM"):
+        if col1.button("Apstiprināt"):
             if pwd == WIPE_PASSWORD:
                 VOTES_CSV.unlink(missing_ok=True)
-                st.success("All votes cleared.")
+                st.success("pliks un nabadzigs pliks un nabadzigs")
             else:
-                st.error("Wrong wipe password.")
+                st.error("Nepareiza dzēšanas parole")
             st.session_state.wipe_step = 0
-        if col2.button("Cancel"):
+        if col2.button("Atcelt"):
             st.session_state.wipe_step = 0
     st.stop()
 
 # ────────── VOTING FORM ──────────────────────────────────────────────────────
 if st.session_state.page == "vote":
-    st.title("Cast your vote")
+    st.title("Balso!")
     selections, errs = {}, []
     for pos in POSITIONS:
         st.subheader(pos)
         df = load_candidates(CANDIDATE_FILES[pos])
         if df.empty:
-            st.error(f"No candidate file for {pos}."); st.stop()
+            st.error(f"Nav atrasts kandidātu fails {pos}."); st.stop()
         sub = st.selectbox("Sub‑category", [""]+df.columns.tolist(), key=f"s_{pos}")
         if not sub:
             errs.append(f"Pick sub‑category for {pos}"); continue
         cand = st.selectbox("Candidate", [""]+df[sub].dropna().tolist(), key=f"c_{pos}")
         if not cand:
-            errs.append(f"Pick candidate for {pos}")
+            errs.append(f"Nominācija {pos}")
         else:
             selections[pos] = cand
-    if st.button("Submit vote"):
+    if st.button("Iesniegt balsojumu"):
         if errs:
             st.error(" • ".join(errs))
         else:
             save_vote({"code": st.session_state.user_code, **selections})
-            st.success("Vote saved. Thank you!")
+            st.success("Balss saglabāta! Paldies!")
             st.session_state.page = "login" 
 
