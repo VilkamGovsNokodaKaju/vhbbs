@@ -1,21 +1,19 @@
-###############################################################################
-# app.py  –  Excel‑based Streamlit voting service (dupe‑proof, working wipe)
-###############################################################################
 import streamlit as st
 import pandas as pd
 from pathlib import Path
 
 # ─────────── CONFIG ──────────────────────────────────────────────────────────
-ADMIN_PASSWORD = "change-me"                  # admin secret
+ADMIN_PASSWORD = st.secrets["auth"]["admin_password"]
+WIPE_PASSWORD  = st.secrets["auth"]["wipe_password"] 
 
-POSITIONS = ["pozA", "pozB"]                  # add more positions any time
-CANDIDATE_FILES = {                           # one Excel file per position
+POSITIONS = ["pozA", "pozB"]                  
+CANDIDATE_FILES = {                          
     "pozA": "candidates.xlsx",
     "pozB": "candidates.xlsx",
 }
 
-CODES_XLSX = Path("codes.xlsx")               # one code per row
-VOTES_CSV  = Path("votes.csv")                # auto‑created
+CODES_XLSX = Path("codes.xlsx")       
+VOTES_CSV  = Path("votes.csv")            
 
 # ─────────── HELPERS ─────────────────────────────────────────────────────────
 def load_codes() -> set[str]:
@@ -44,9 +42,9 @@ def save_vote(record: dict[str, str]) -> None:
     )
 
 # ─────────── SESSION STATE ───────────────────────────────────────────────────
-st.session_state.setdefault("mode", "login")      # login | vote | admin
+st.session_state.setdefault("mode", "login")  
 st.session_state.setdefault("user_code", "")
-st.session_state.setdefault("wipe_step", 0)       # 0→not started, 1→confirm
+st.session_state.setdefault("wipe_step", 0)   
 
 # ─────────── LOGIN ───────────────────────────────────────────────────────────
 if st.session_state.mode == "login":
@@ -56,9 +54,10 @@ if st.session_state.mode == "login":
         code = code.strip()
         if code == ADMIN_PASSWORD:
             st.session_state.mode = "admin"
+            st.session_state.admin_unlocked = False
 
         elif code in load_codes():
-            votes = load_votes()                            # ← fresh read
+            votes = load_votes()                          
             if "code" in votes.columns and code in votes["code"].values:
                 st.error("That code has already been used – you can’t vote twice.")
             else:
@@ -70,6 +69,18 @@ if st.session_state.mode == "login":
     st.stop()
 
 # ─────────── ADMIN PANEL ─────────────────────────────────────────────────────
+if "admin_unlocked" not in st.session_state:
+    st.session_state.admin_unlocked = False
+
+if not st.session_state.admin_unlocked:
+    pwd = st.text_input("Admin password", type="password")
+    if st.button("Unlock admin"):
+        if pwd == ADMIN_PASSWORD:
+            st.session_state.admin_unlocked = True
+        else:
+            st.error("Wrong password.")
+    st.stop()
+
 if st.session_state.mode == "admin":
     st.title("Admin Dashboard")
     votes = load_votes()
@@ -87,26 +98,23 @@ if st.session_state.mode == "admin":
             else:
                 st.info("No votes for this position yet.")
 
-    # Download votes
     if VOTES_CSV.exists():
         st.download_button("Download raw CSV", VOTES_CSV.read_bytes(), "votes.csv")
 
-    # Danger‑zone wipe (two clicks)
     st.markdown("---")
     st.subheader("Danger Zone – wipe ALL votes")
-    if st.session_state.wipe_step == 0:
-        if st.button("Clear all votes"):
-            st.session_state.wipe_step = 1
-    elif st.session_state.wipe_step == 1:
-        st.warning("Are you sure? This cannot be undone.")
-        col1, col2 = st.columns(2)
-        if col1.button("Yes, delete"):
-            VOTES_CSV.unlink(missing_ok=True)
-            st.success("All votes cleared.")
-            st.session_state.wipe_step = 0
-        if col2.button("Cancel"):
-            st.session_state.wipe_step = 0
-    st.stop()
+
+    wipe_pwd = st.text_input("Enter Wipe‑Password", type="password")
+    if st.button("Delete all votes"):
+        if wipe_pwd != WIPE_PASSWORD:
+            st.error("Wrong wipe password.")
+        else:
+            try:
+                VOTES_CSV.unlink(missing_ok=True)
+                st.success("All votes cleared.")
+            except Exception as e:
+                st.error(f"Error clearing votes: {e}")
+
 
 # ─────────── VOTING FORM ─────────────────────────────────────────────────────
 if st.session_state.mode == "vote":
@@ -131,5 +139,5 @@ if st.session_state.mode == "vote":
         else:
             save_vote({"code": st.session_state.user_code, **selections})
             st.success("Your vote was saved. Thank you!")
-            st.session_state.mode = "login"      # back to login
-###############################################################################
+            st.session_state.mode = "login" 
+
