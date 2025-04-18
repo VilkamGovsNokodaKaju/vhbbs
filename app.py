@@ -83,42 +83,29 @@ if st.session_state.voted:
 # --- Admin Dashboard ----------------------------------------------------------
 def show_admin():
     st.header("Admin Dashboard")
+    # Check if vote file exists and is non-empty
     if VOTE_FILE.exists():
-        votes_df = pd.read_csv(VOTE_FILE, dtype=str)
-        for cat in CANDIDATE_FILES.keys():
-            st.subheader(f"Top 10 for {cat}")
-            if cat in votes_df.columns:
-                counts = votes_df[cat].value_counts().head(10)
-                if not counts.empty:
-                    df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
-                    st.table(df_top)
-                else:
-                    st.info("No votes cast in this category yet.")
+        try:
+            if VOTE_FILE.stat().st_size == 0:
+                st.info("No votes recorded yet.")
             else:
-                st.info("No votes cast in this category yet.")
-        st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
-        st.markdown("---")
-        st.subheader("Danger Zone: Clear All Votes")
-        if st.session_state.clear_confirm == 0:
-            if st.button("Clear All Votes"):
-                st.session_state.clear_confirm = 1
-        elif st.session_state.clear_confirm == 1:
-            st.warning("Are you sure?")
-            if st.button("Yes, clear votes", key="confirm1"):
-                st.session_state.clear_confirm = 2
-            if st.button("Cancel", key="cancel1"):
-                st.session_state.clear_confirm = 0
-        elif st.session_state.clear_confirm == 2:
-            st.error("Are you really really sure? This cannot be undone.")
-            if st.button("Yes, delete all votes", key="confirm2"):
-                try:
-                    VOTE_FILE.unlink()
-                    st.success("All votes cleared.")
-                except Exception as e:
-                    st.error(f"Error clearing votes: {e}")
-                st.session_state.clear_confirm = 0
-            if st.button("Cancel", key="cancel2"):
-                st.session_state.clear_confirm = 0
+                votes_df = pd.read_csv(VOTE_FILE, dtype=str)
+                cats = [c for c in votes_df.columns if c != 'code']
+                if not cats:
+                    st.info("No votes recorded yet.")
+                else:
+                    for cat in cats:
+                        st.subheader(f"Top 10 for {cat}")
+                        counts = votes_df[cat].value_counts().head(10)
+                        if not counts.empty:
+                            df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
+                            st.table(df_top)
+                        else:
+                            st.info("No votes cast in this category yet.")
+        except pd.errors.EmptyDataError:
+            st.info("No votes recorded yet.")
+        except Exception as e:
+            st.error(f"Error reading votes: {e}")
     else:
         st.info("No votes recorded yet.")
 
