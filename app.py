@@ -75,7 +75,8 @@ st.title("Simple Voting Service")
 
 # --- Login Page ---------------------------------------------------------------
 if st.session_state.page == "login":
-    st.text_input("Enter your 5-character code:", key="code_input")
+    # Code entry
+    st.session_state.code_input = st.text_input("Enter your 5-character code:", st.session_state.code_input)
     if st.button("Login"):
         code = st.session_state.code_input.strip()
         if code == ADMIN_CODE:
@@ -99,7 +100,6 @@ if st.session_state.page == "login":
                 st.session_state.error = ""
         else:
             st.session_state.error = "Invalid code."
-        st.experimental_rerun()
     if st.session_state.error:
         st.error(st.session_state.error)
     st.stop()
@@ -107,7 +107,7 @@ if st.session_state.page == "login":
 # --- Admin Dashboard ----------------------------------------------------------
 if st.session_state.page == "admin":
     st.header("Admin Dashboard")
-    # Load and display top 10 per category
+    # Show Top 10 per category
     if VOTE_FILE.exists() and VOTE_FILE.stat().st_size > 0:
         try:
             votes_df = pd.read_csv(VOTE_FILE, dtype=str)
@@ -129,7 +129,6 @@ if st.session_state.page == "admin":
     st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
     if st.button("Logout"):
         reset_session()
-        st.experimental_rerun()
     st.stop()
 
 # --- Voting Page --------------------------------------------------------------
@@ -165,9 +164,9 @@ if st.session_state.page == "vote":
                     index=False
                 )
                 st.session_state.page = "thanks"
+                st.experimental_rerun = None  # disable any accidental old calls
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
-        st.experimental_rerun()
     st.stop()
 
 # --- Thank You Page -----------------------------------------------------------
@@ -176,4 +175,4 @@ if st.session_state.page == "thanks":
     st.write("Your vote has been successfully recorded.")
     if st.button("New session"):
         reset_session()
-        st.experimental_rerun()
+    st.stop()
