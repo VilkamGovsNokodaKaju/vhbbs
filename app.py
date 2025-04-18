@@ -1,11 +1,8 @@
-###############################################################################
-# app.py  –  Excel‑based voting service, duplicate‑proof, with admin wipe
-###############################################################################
 import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# ────────── CONFIG (use secrets if present) ──────────────────────────────────
+# ────────── CONFIG ──────────────────────────────────
 ADMIN_PASSWORD = st.secrets.get("auth", {}).get("admin_password", "change-me")
 WIPE_PASSWORD  = st.secrets.get("auth", {}).get("wipe_password",  "extra-secret")
 
@@ -16,8 +13,8 @@ CANDIDATE_FILES = {
     "pozB": "candidatesB.xlsx",
 }
 
-CODES_XLSX = Path("codes.xlsx")            # one code per row
-VOTES_CSV  = Path("votes.csv")             # auto‑created
+CODES_XLSX = Path("codes.xlsx")
+VOTES_CSV  = Path("votes.csv")
 
 # ────────── HELPERS ──────────────────────────────────────────────────────────
 def load_codes() -> set[str]:
@@ -30,10 +27,10 @@ def load_candidates(file: str) -> pd.DataFrame:
     if not p.exists(): return pd.DataFrame()
     return pd.read_excel(p, dtype=str).dropna(axis=1, how="all")
 
-def load_votes() -> pd.DataFrame:
-    if VOTES_CSV.exists() and VOTES_CSV.stat().st_size:
-        return pd.read_csv(VOTES_CSV, dtype=str)
-    return pd.DataFrame()
+def load_codes() -> set[str]:
+    """Read voter codes from Streamlit Secrets."""
+    secret_list = st.secrets.get("codes", {}).get("list", [])
+    return set(code.strip() for code in secret_list)
 
 def save_vote(row: dict):
     pd.DataFrame([row]).to_csv(
@@ -44,7 +41,7 @@ def save_vote(row: dict):
     )
 
 # ────────── SESSION STATE ────────────────────────────────────────────────────
-st.session_state.setdefault("page", "login")      # login | vote | admin
+st.session_state.setdefault("page", "login")
 st.session_state.setdefault("code",    "")
 st.session_state.setdefault("wipe_step", 0)
 
@@ -57,7 +54,7 @@ if st.session_state.page == "login":
         if code == ADMIN_PASSWORD:
             st.session_state.page = "admin"
         elif code in load_codes():
-            if code in load_votes().get("code", []).values:         # no dupes
+            if code in load_votes().get("code", []).values:
                 st.error("That code has already voted.")
             else:
                 st.session_state.code = code
@@ -130,5 +127,5 @@ if st.session_state.page == "vote":
         else:
             save_vote({"code": st.session_state.code, **selections})
             st.success("Vote saved. You may close the page.")
-            st.session_state.page = "login"     # back to login
-###############################################################################
+            st.session_state.page = "login"
+
