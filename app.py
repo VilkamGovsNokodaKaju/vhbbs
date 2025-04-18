@@ -21,7 +21,7 @@ if "thanks" in params:
     st.header("Thank You!")
     st.write("Your vote has been successfully recorded.")
     if st.button("Back to login"):
-        st.experimental_set_query_params()  # clear params, return to login
+        st.query_params = {}  # clear params, return to login
     st.stop()
 
 # Helper: find a file by name, case-insensitive
@@ -34,7 +34,7 @@ def find_file(name: str) -> Path | None:
             return f
     return None
 
-# Load list of valid voter codes from CSV or XLSX
+# Load valid voter codes from CSV or XLSX
 def load_codes() -> list:
     for name in ("codes.csv", "codes.xlsx"):
         path = find_file(name)
@@ -127,8 +127,11 @@ def show_voter():
             if 'code' in existing.columns and code in existing['code'].tolist():
                 st.warning("Our records show you've already voted. Thank you!")
                 st.stop()
-        except Exception:
+        except pd.errors.EmptyDataError:
             pass
+        except Exception as e:
+            st.error(f"Error checking previous votes: {e}")
+            st.stop()
 
     st.success("Welcome! Please cast your vote for each category.")
     vote_data = {"code": code}
@@ -159,7 +162,7 @@ def show_voter():
                 out_path = votes_path if votes_path else Path(VOTE_FILE)
                 new_df.to_csv(out_path, mode="a" if out_path.exists() else "w", header=not out_path.exists(), index=False)
                 # Redirect this voter to thank-you screen
-                st.experimental_set_query_params(thanks=["1"])
+                st.query_params = {"thanks": ["1"]}
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
         st.stop()
