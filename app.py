@@ -10,7 +10,7 @@ VOTER_CODES = set(st.secrets["codes"]["list"])
 POSITIONS = ["pozA", "pozB"]
 CANDIDATE_FILES = {            
     "pozA": "candidates.xlsx",
-    "pozB": "candidatesB.xlsx",
+    "pozB": "candidates.xlsx",
 }
 
 VOTES_CSV = Path("votes.csv")    # created automatically
