@@ -7,6 +7,7 @@ ADMIN_CODE = "ADMIN123"  # Change this to your actual admin code
 VOTE_FILE = "votes.csv"
 
 # Candidate category mapping: category -> (xlsx_filename, csv_filename)
+# Lines 6 and 7:
 CANDIDATE_FILES = {
     "Kategorija A": ("candidates.xlsx", "candidates.csv"),
     "Kategorija B": ("candidates.xlsx", "candidates.csv"),
@@ -14,14 +15,16 @@ CANDIDATE_FILES = {
 
 st.title("Simple Voting Service")
 
-# Show thank-you screen if redirected here
+# Thank-you screen for the individual voter
 params = st.query_params
 if "thanks" in params:
     st.header("Thank You!")
     st.write("Your vote has been successfully recorded.")
+    if st.button("Back to login"):
+        st.experimental_set_query_params()  # clear params, return to login
     st.stop()
 
-# Helper: find a file in working directory, case-insensitive
+# Helper: find a file by name, case-insensitive
 def find_file(name: str) -> Path | None:
     p = Path(name)
     if p.exists():
@@ -31,7 +34,7 @@ def find_file(name: str) -> Path | None:
             return f
     return None
 
-# Load valid voter codes from CSV or XLSX
+# Load list of valid voter codes from CSV or XLSX
 def load_codes() -> list:
     for name in ("codes.csv", "codes.xlsx"):
         path = find_file(name)
@@ -48,7 +51,7 @@ def load_codes() -> list:
     st.error("No codes file found (codes.csv or codes.xlsx).")
     return []
 
-# Load candidate options for a category from CSV or XLSX
+# Load candidate matrix for a category from CSV or XLSX
 def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     path_csv = find_file(csv_name)
     if path_csv:
@@ -67,7 +70,7 @@ def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     st.error(f"No candidate file found for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-# Load codes
+# Load valid voter codes
 df_codes = load_codes()
 
 # Prompt for code
@@ -82,11 +85,11 @@ def show_admin():
     votes_path = find_file(VOTE_FILE)
     if votes_path and votes_path.exists():
         votes_df = pd.read_csv(votes_path, dtype=str)
-        categories = [col for col in votes_df.columns if col != 'code']
-        if not categories:
+        cats = [c for c in votes_df.columns if c != 'code']
+        if not cats:
             st.info("No votes recorded yet.")
         else:
-            for cat in categories:
+            for cat in cats:
                 st.subheader(f"Top 10 for {cat}")
                 counts = votes_df[cat].value_counts().head(10)
                 if not counts.empty:
@@ -95,10 +98,8 @@ def show_admin():
                     st.table(df_top)
                 else:
                     st.info("No votes cast in this category yet.")
-        # Download raw votes
         with open(votes_path, "rb") as f:
             st.download_button("Download full votes", f, file_name=votes_path.name)
-        # Danger zone: clear votes
         st.markdown("---")
         st.subheader("Danger Zone: Clear All Votes")
         st.markdown(
@@ -126,16 +127,12 @@ def show_voter():
             if 'code' in existing.columns and code in existing['code'].tolist():
                 st.warning("Our records show you've already voted. Thank you!")
                 st.stop()
-        except pd.errors.EmptyDataError:
+        except Exception:
             pass
-        except Exception as e:
-            st.error(f"Error checking previous votes: {e}")
-            st.stop()
 
     st.success("Welcome! Please cast your vote for each category.")
     vote_data = {"code": code}
     errors = []
-    # Display all categories
     for cat, (xlsx, csv) in CANDIDATE_FILES.items():
         st.subheader(cat)
         df = load_candidates(xlsx, csv)
@@ -161,8 +158,8 @@ def show_voter():
                 new_df = pd.DataFrame([vote_data])
                 out_path = votes_path if votes_path else Path(VOTE_FILE)
                 new_df.to_csv(out_path, mode="a" if out_path.exists() else "w", header=not out_path.exists(), index=False)
-                st.header("Thank You!")
-                st.write("Your vote has been successfully recorded.")
+                # Redirect this voter to thank-you screen
+                st.experimental_set_query_params(thanks=["1"])
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
         st.stop()
