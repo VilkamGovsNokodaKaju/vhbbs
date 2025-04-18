@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 # Configuration
-ADMIN_CODE = "ADMIN123"  # Change to your actual admin code
+ADMIN_CODE = "ADMIN123"  # Change this to your actual admin code
 VOTE_FILE = "votes.csv"
 
 # Candidate category mapping: category -> (xlsx_filename, csv_filename)
@@ -21,7 +21,7 @@ if "thanks" in params:
     st.write("Your vote has been successfully recorded.")
     st.stop()
 
-# Helper to find a file by name, case-insensitive (uncached to detect new files)
+# Helper: find a file in working directory, case-insensitive
 def find_file(name: str) -> Path | None:
     p = Path(name)
     if p.exists():
@@ -31,8 +31,7 @@ def find_file(name: str) -> Path | None:
             return f
     return None
 
-# Load list of valid voter codes
-@st.cache_data
+# Load valid voter codes from CSV or XLSX
 def load_codes() -> list:
     for name in ("codes.csv", "codes.xlsx"):
         path = find_file(name)
@@ -49,8 +48,7 @@ def load_codes() -> list:
     st.error("No codes file found (codes.csv or codes.xlsx).")
     return []
 
-# Load candidate options for a category
-@st.cache_data
+# Load candidate options for a category from CSV or XLSX
 def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     path_csv = find_file(csv_name)
     if path_csv:
@@ -69,27 +67,26 @@ def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     st.error(f"No candidate file found for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-# Load valid codes once
+# Load codes
 df_codes = load_codes()
 
-# Prompt for voter/admin code
+# Prompt for code
 code = st.text_input("Enter your 5-character code:")
 if not code:
     st.stop()
 code = code.strip()
 
-# Admin view
+# Admin dashboard
 def show_admin():
     st.header("Admin Dashboard")
     votes_path = find_file(VOTE_FILE)
-    # Display results
     if votes_path and votes_path.exists():
         votes_df = pd.read_csv(votes_path, dtype=str)
-        cats = [col for col in votes_df.columns if col != 'code']
-        if not cats:
+        categories = [col for col in votes_df.columns if col != 'code']
+        if not categories:
             st.info("No votes recorded yet.")
         else:
-            for cat in cats:
+            for cat in categories:
                 st.subheader(f"Top 10 for {cat}")
                 counts = votes_df[cat].value_counts().head(10)
                 if not counts.empty:
@@ -98,10 +95,10 @@ def show_admin():
                     st.table(df_top)
                 else:
                     st.info("No votes cast in this category yet.")
-        # Download button
+        # Download raw votes
         with open(votes_path, "rb") as f:
             st.download_button("Download full votes", f, file_name=votes_path.name)
-        # Clear votes section
+        # Danger zone: clear votes
         st.markdown("---")
         st.subheader("Danger Zone: Clear All Votes")
         st.markdown(
@@ -119,41 +116,36 @@ def show_admin():
     else:
         st.info("No votes recorded yet.")
 
-# Voter view
+# Voter interface
 def show_voter():
     # Prevent double voting
     votes_path = find_file(VOTE_FILE)
-    voted_already = False
     if votes_path and votes_path.exists():
         try:
             existing = pd.read_csv(votes_path, dtype=str)
             if 'code' in existing.columns and code in existing['code'].tolist():
-                voted_already = True
+                st.warning("Our records show you've already voted. Thank you!")
+                st.stop()
         except pd.errors.EmptyDataError:
-            voted_already = False
+            pass
         except Exception as e:
             st.error(f"Error checking previous votes: {e}")
             st.stop()
-    if voted_already:
-        st.warning("Our records show you've already voted. Thank you!")
-        st.stop()
 
     st.success("Welcome! Please cast your vote for each category.")
     vote_data = {"code": code}
     errors = []
-    # Show all categories upfront
+    # Display all categories
     for cat, (xlsx, csv) in CANDIDATE_FILES.items():
         st.subheader(cat)
         df = load_candidates(xlsx, csv)
         if df.empty:
             st.warning(f"No candidate data for {cat}.")
             continue
-
         subs = df.columns.tolist()
         choice_sub = st.selectbox(f"Select subcategory for {cat}", ["-- Select --"] + subs, key=f"sub_{cat}")
         sub_opts = df[choice_sub].dropna().tolist() if choice_sub != "-- Select --" else []
         choice_cand = st.selectbox(f"Select candidate for {cat}", ["-- Select --"] + sub_opts, key=f"cand_{cat}")
-
         if choice_sub == "-- Select --":
             errors.append(f"Please choose a subcategory for {cat}.")
         if choice_cand == "-- Select --":
@@ -169,13 +161,13 @@ def show_voter():
                 new_df = pd.DataFrame([vote_data])
                 out_path = votes_path if votes_path else Path(VOTE_FILE)
                 new_df.to_csv(out_path, mode="a" if out_path.exists() else "w", header=not out_path.exists(), index=False)
-                # Redirect to thank you screen
-                st.query_params = {"thanks": ["1"]}
-                st.experimental_rerun()
+                st.header("Thank You!")
+                st.write("Your vote has been successfully recorded.")
             except Exception as e:
                 st.error(f"Error saving vote: {e}")
+        st.stop()
 
-# Main logic
+# Main execution
 if code == ADMIN_CODE:
     show_admin()
 elif code in df_codes:
