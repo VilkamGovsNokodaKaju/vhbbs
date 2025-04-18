@@ -11,18 +11,18 @@ ADMIN_PASSWORD = "change-me"                  # ← admin secret
 POSITIONS = ["pozA", "pozB"]                  # add more when needed
 
 CANDIDATE_FILES = {                           # file per position
-    "pozA": "candidates.csv",
-    "pozB": "candidates.csv",
+    "pozA": "candidates.xlsx",
+    "pozB": "candidates.xlsx",
 }
 
-CODES_CSV = Path("codes.csv")                 # one code per row
-VOTES_CSV = Path("votes.csv")                 # created by the app
+CODES_CSV = Path("codes.xlsx")                 # one code per row
+VOTES_CSV = Path("votes.xlsx")                 # created by the app
 
 # ───────────────── HELPERS ────────────────────────────────────────────────────
 def load_codes() -> set[str]:
     """—all voter codes as a set—"""
     if not CODES_CSV.exists():
-        st.error("codes.csv not found")
+        st.error("codes.xlsx not found")
         return set()
     df = pd.read_csv(CODES_CSV, header=None, dtype=str)
     return set(df.iloc[:, 0].str.strip())
@@ -31,7 +31,7 @@ def load_candidates(file: str) -> pd.DataFrame:
     p = Path(file)
     if not p.exists():
         return pd.DataFrame()
-    df = pd.read_csv(p) if p.suffix.lower() == ".csv" else pd.read_excel(p)
+    df = pd.read_csv(p) if p.suffix.lower() == ".xlsx" else pd.read_excel(p)
     return df.dropna(axis=1, how="all")
 
 def load_votes() -> pd.DataFrame:
@@ -91,7 +91,7 @@ if st.session_state.mode == "admin":
     if VOTES_CSV.exists():
         st.download_button("Download raw CSV",
                            VOTES_CSV.read_bytes(),
-                           file_name="votes.csv")
+                           file_name="votes.xlsx")
     # Clear votes (2‑click warning)
     st.markdown("---")
     if st.button("Clear ALL votes"):
