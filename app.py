@@ -2,199 +2,176 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# Configuration
-ADMIN_CODE = "ADMIN123"  # Change to your actual admin code
+# ------------------- Configuration -------------------
+ADMIN_CODE = "ADMIN123"
 VOTE_FILE = Path("votes.csv")
 CANDIDATE_FILES = {
     "Kategorija A": ("candidates.xlsx", "candidates.csv"),
     "Kategorija B": ("candidates.xlsx", "candidates.csv"),
 }
 
-# Initialize session state
+# ------------------- Session State -------------------
 if "page" not in st.session_state:
     st.session_state.page = "login"
-if "code_value" not in st.session_state:
-    st.session_state.code_value = ""
-if "error" not in st.session_state:
-    st.session_state.error = ""
+if "input_code" not in st.session_state:
+    st.session_state.input_code = ""
+if "confirm_clear" not in st.session_state:
+    st.session_state.confirm_clear = 0
 
-# Helpers
+# ------------------- Helpers -------------------
 def reset_session():
     st.session_state.page = "login"
-    st.session_state.code_value = ""
-    st.session_state.error = ""
+    st.session_state.input_code = ""
+    st.session_state.confirm_clear = 0
 
 
-def find_file(name: str) -> Path | None:
-    p = Path(name)
-    if p.exists():
-        return p
-    for f in Path().iterdir():
-        if f.name.lower() == name.lower():
-            return f
-    return None
-
-
-def load_codes() -> list[str]:
+def load_codes():
     for fname in ("codes.csv", "codes.xlsx"):
-        path = find_file(fname)
-        if path:
+        p = Path(fname)
+        if p.exists():
             try:
-                if path.suffix.lower() == ".csv":
-                    df = pd.read_csv(path, header=None, dtype=str)
+                if p.suffix.lower() == ".csv":
+                    df = pd.read_csv(p, header=None, dtype=str)
                 else:
-                    df = pd.read_excel(path, header=None, dtype=str)
+                    df = pd.read_excel(p, header=None, dtype=str)
                 return df.iloc[:, 0].str.strip().tolist()
             except Exception as e:
-                st.error(f"Error loading codes from {path.name}: {e}")
-    st.error("Could not find codes.csv or codes.xlsx with valid codes.")
+                st.error(f"Error reading {p.name}: {e}")
+                return []
+    st.error("Could not find a codes file.")
     return []
 
 
-def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
-    for fname in (csv_name, xlsx_name):
-        path = find_file(fname)
-        if path:
-            try:
-                if path.suffix.lower() == ".csv":
-                    df = pd.read_csv(path, dtype=str)
-                else:
-                    df = pd.read_excel(path, dtype=str)
-                return df.dropna(axis=1, how="all")
-            except Exception as e:
-                st.error(f"Error loading candidates from {path.name}: {e}")
-    st.error(f"No candidate file found for {xlsx_name} or {csv_name}.")
-    return pd.DataFrame()
-
-# Load codes
-df_codes = load_codes()
-
-# App title
-st.title("Simple Voting Service")
-
-# Login page
-def login_page():
-    st.text_input("Enter your 5-character code:", key="code_value")
-    if st.button("Login"):
-        code = st.session_state.code_value.strip()
-        if code == ADMIN_CODE:
-            st.session_state.page = "admin"
-            st.session_state.error = ""
-        elif code in df_codes:
-            # check if already voted
-            if VOTE_FILE.exists():
-                try:
-                    voted_df = pd.read_csv(VOTE_FILE, dtype=str)
-                    if 'code' in voted_df.columns and code in voted_df['code'].tolist():
-                        st.session_state.error = "You've already voted."
-                    else:
-                        st.session_state.page = "vote"
-                        st.session_state.error = ""
-                except Exception:
-                    st.session_state.page = "vote"
-                    st.session_state.error = ""
-            else:
-                st.session_state.page = "vote"
-                st.session_state.error = ""
-        else:
-            st.session_state.error = "Invalid code."
-        st.stop()
-    if st.session_state.error:
-        st.error(st.session_state.error)
-
-# Admin page
-def admin_page():
-    st.header("Admin Dashboard")
-    # Show Top 10 for each defined category
+def load_votes():
     if VOTE_FILE.exists() and VOTE_FILE.stat().st_size > 0:
         try:
-            df_votes = pd.read_csv(VOTE_FILE, dtype=str)
+            return pd.read_csv(VOTE_FILE, dtype=str)
         except Exception:
-            st.info("Error reading votes; no data to display.")
+            return pd.DataFrame()
+    return pd.DataFrame()
+
+
+def save_vote(record: dict):
+    df = pd.DataFrame([record])
+    header = not VOTE_FILE.exists()
+    df.to_csv(VOTE_FILE, mode="a", header=header, index=False)
+
+# ------------------- Load Data -------------------
+valid_codes = load_codes()
+
+# ------------------- Pages -------------------
+
+def login_page():
+    st.title("Login")
+    st.session_state.input_code = st.text_input("5-character code", st.session_state.input_code)
+    if st.button("Login"):
+        code = st.session_state.input_code.strip()
+        if code == ADMIN_CODE:
+            st.session_state.page = "admin"
+        elif code in valid_codes:
+            votes = load_votes()
+            if 'code' in votes.columns and code in votes['code'].tolist():
+                st.error("You have already voted.")
+            else:
+                st.session_state.page = "vote"
+                st.session_state.code = code
         else:
-            for category in CANDIDATE_FILES.keys():
-                st.subheader(f"Top 10 for {category}")
-                if category in df_votes.columns:
-                    counts = df_votes[category].value_counts().head(10)
-                    if not counts.empty:
-                        df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
-                        st.table(df_top)
-                    else:
-                        st.info("No votes cast in this category yet.")
-                else:
-                    st.info("No votes cast in this category yet.")
-    else:
-        st.info("No votes recorded yet.")
+            st.error("Invalid code.")
+    st.stop()
 
-    # Download raw votes
-    st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
-    
-    # Clear votes (Danger Zone)
-    st.markdown("---")
-    st.subheader("Danger Zone: Clear All Votes")
-    if st.button("Clear All Votes"):
-        if st.confirm("Are you sure you want to delete all votes?", key="clear1"):
-            if st.confirm("Really REALLY sure? This cannot be undone.", key="clear2"):
-                try:
-                    VOTE_FILE.unlink()
-                    st.success("All votes have been cleared.")
-                except Exception as e:
-                    st.error(f"Error clearing votes: {e}")
-    
-    # Logout button
-    if st.button("Logout"):
-        reset_session()
-        st.stop()
 
-# Voting page
 def vote_page():
-    st.success("Welcome! Cast your vote for each category.")
-    vote_data = {'code': st.session_state.code_value.strip()}
+    st.title("Vote")
+    st.write("Please cast your vote below.")
+    record = {"code": st.session_state.code}
     errors = []
     for cat, (xlsx, csv) in CANDIDATE_FILES.items():
         st.subheader(cat)
-        df = load_candidates(xlsx, csv)
-        if df.empty:
-            errors.append(f"No data for {cat}.")
+        df = None
+        if Path(csv).exists():
+            df = pd.read_csv(csv, dtype=str)
+        elif Path(xlsx).exists():
+            df = pd.read_excel(xlsx, dtype=str)
+        if df is None or df.empty:
+            st.warning(f"No candidates for {cat}.")
+            errors.append(f"No candidates for {cat}.")
             continue
         subcats = df.columns.tolist()
-        chosen_sub = st.selectbox(f"Subcategory ({cat}):", ["-- Select --"] + subcats, key=f"sub_{cat}")
-        options = df[chosen_sub].dropna().tolist() if chosen_sub != "-- Select --" else []
-        chosen_cand = st.selectbox(f"Candidate ({cat}):", ["-- Select --"] + options, key=f"cand_{cat}")
-        if chosen_sub == "-- Select --":
-            errors.append(f"Select subcategory for {cat}.")
-        if chosen_cand == "-- Select --":
-            errors.append(f"Select candidate for {cat}.")
+        choice_sub = st.selectbox(f"Subcategory ({cat})", ["-- Select --"] + subcats, key=f"sub_{cat}")
+        if choice_sub == "-- Select --":
+            errors.append(f"Select a subcategory for {cat}.")
+            continue
+        candidates = df[choice_sub].dropna().tolist()
+        choice_cand = st.selectbox(f"Candidate ({cat})", ["-- Select --"] + candidates, key=f"cand_{cat}")
+        if choice_cand == "-- Select --":
+            errors.append(f"Select a candidate for {cat}.")
         else:
-            vote_data[cat] = chosen_cand
-
+            record[cat] = choice_cand
     if st.button("Submit Vote"):
         if errors:
             st.error("\n".join(errors))
         else:
-            try:
-                pd.DataFrame([vote_data]).to_csv(VOTE_FILE, mode="a" if VOTE_FILE.exists() else "w", header=not VOTE_FILE.exists(), index=False)
-                st.session_state.page = "thankyou"
-                st.stop()
-            except Exception as e:
-                st.error(f"Error saving vote: {e}")
+            save_vote(record)
+            st.session_state.page = "thankyou"
+    st.stop()
 
-# Thank you page
+
 def thankyou_page():
-    st.header("Thank You!")
+    st.title("Thank You!")
     st.write("Your vote has been recorded.")
     if st.button("New Session"):
         reset_session()
-        st.stop()
+    st.stop()
 
-# Render pages
+
+def admin_page():
+    st.title("Admin Dashboard")
+    votes = load_votes()
+    if votes.empty:
+        st.info("No votes recorded yet.")
+    else:
+        for cat in CANDIDATE_FILES.keys():
+            st.subheader(f"Top 10 for {cat}")
+            if cat in votes.columns:
+                top10 = votes[cat].value_counts().head(10)
+                if not top10.empty:
+                    df_top = top10.rename_axis('Candidate').reset_index(name='Votes')
+                    st.table(df_top)
+                else:
+                    st.info(f"No votes cast for {cat} yet.")
+            else:
+                st.info(f"No votes cast for {cat} yet.")
+    st.download_button("Download full votes", data=VOTE_FILE.read_bytes(), file_name=VOTE_FILE.name)
+
+    st.markdown("---")
+    st.subheader("Danger Zone: Clear All Votes")
+    if st.session_state.confirm_clear == 0:
+        if st.button("Clear All Votes"):
+            st.session_state.confirm_clear = 1
+    elif st.session_state.confirm_clear == 1:
+        st.warning("Are you sure you want to delete all votes?")
+        if st.button("Yes, delete all votes", key="confirm_clear_yes"):
+            try:
+                VOTE_FILE.unlink()
+                st.success("All votes have been cleared.")
+            except Exception as e:
+                st.error(f"Error clearing votes: {e}")
+            st.session_state.confirm_clear = 0
+        if st.button("Cancel", key="confirm_clear_no"):
+            st.session_state.confirm_clear = 0
+
+    if st.button("Logout"):
+        reset_session()
+    st.stop()
+
+# ------------------- Router -------------------
 if st.session_state.page == "login":
     login_page()
-elif st.session_state.page == "admin":
-    admin_page()
 elif st.session_state.page == "vote":
     vote_page()
 elif st.session_state.page == "thankyou":
     thankyou_page()
+elif st.session_state.page == "admin":
+    admin_page()
 else:
     reset_session()
