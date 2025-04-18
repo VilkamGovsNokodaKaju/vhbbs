@@ -46,8 +46,13 @@ def load_candidates(xlsx_name, csv_name):
         st.error(f"Error loading {xlsx_name}/{csv_name}: {e}")
         return pd.DataFrame()
 
-@st.cache_data
-def load_votes():
+def load_votes():  # uncached to always read fresh votes
+    if VOTES_FILE.exists() and VOTES_FILE.stat().st_size > 0:
+        try:
+            return pd.read_csv(VOTES_FILE, dtype=str)
+        except Exception:
+            return pd.DataFrame()
+    return pd.DataFrame()
     if VOTES_FILE.exists() and VOTES_FILE.stat().st_size>0:
         try:
             return pd.read_csv(VOTES_FILE, dtype=str)
@@ -119,7 +124,7 @@ if st.session_state.is_admin:
                 st.success("All votes cleared.")
             except Exception as e:
                 st.error(f"Error clearing votes: {e}")
-    st.button("Logout", on_click=lambda: reset_session())
+    
     st.stop()
 
 # Voting form
