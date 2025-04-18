@@ -2,15 +2,18 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-# Configuration
-CODES_FILE = "codes.xlsx"
-VOTES_FILE = "votes.csv"
+# Determine base directory (where this script resides)
+BASE_DIR = Path(__file__).resolve().parent
+
+# Configuration: file paths
+CODES_FILE = BASE_DIR / "codes.xlsx"
+VOTES_FILE = BASE_DIR / "votes.csv"
 ADMIN_CODE = "ADMIN123"  # Change this to your admin code
 
 # Define your voting categories and corresponding candidate files
 CANDIDATE_FILES = {
-    "CategoryA": "candidates.xlsx",
-    "CategoryB": "candidates.xlsx",
+    "CategoryA": BASE_DIR / "categoryA.xlsx",
+    "CategoryB": BASE_DIR / "categoryB.xlsx",
 }
 
 st.title("Simple Voting Service")
@@ -20,8 +23,8 @@ def load_codes():
     try:
         df = pd.read_excel(CODES_FILE, dtype=str, header=None)
         return df.iloc[:, 0].str.strip().tolist()
-    except Exception:
-        st.error(f"Could not load codes from {CODES_FILE}.")
+    except Exception as e:
+        st.error(f"Could not load codes from {CODES_FILE.name}: {e}")
         return []
 
 @st.cache_data
@@ -31,8 +34,8 @@ def load_candidates(file_path):
         # Expect first row as headers (subcategories) and candidates below
         df = df.dropna(axis=1, how="all")  # remove empty columns
         return df
-    except Exception:
-        st.error(f"Could not load candidates from {file_path}.")
+    except Exception as e:
+        st.error(f"Could not load candidates from {file_path.name}: {e}")
         return pd.DataFrame()
 
 codes = load_codes()
@@ -46,10 +49,10 @@ code = code.strip()
 if code == ADMIN_CODE:
     # Admin view
     st.header("Admin Dashboard")
-    if Path(VOTES_FILE).exists():
+    if VOTES_FILE.exists():
         votes_df = pd.read_csv(VOTES_FILE, dtype=str)
         results = []
-        for category in CANDIDATE_FILES:
+        for category, path in CANDIDATE_FILES.items():
             if category in votes_df.columns:
                 counts = votes_df[category].value_counts()
                 if not counts.empty:
@@ -60,7 +63,7 @@ if code == ADMIN_CODE:
             res_df = pd.DataFrame(results)
             st.table(res_df)
             with open(VOTES_FILE, "rb") as f:
-                st.download_button("Download raw votes", f, file_name=VOTES_FILE, mime="text/csv")
+                st.download_button("Download raw votes", f, file_name=VOTES_FILE.name, mime="text/csv")
         else:
             st.info("No votes recorded yet.")
     else:
@@ -72,8 +75,8 @@ elif code in codes:
     vote_data = {"code": code}
     for category, file_path in CANDIDATE_FILES.items():
         st.subheader(category)
-        if not Path(file_path).exists():
-            st.warning(f"Candidate file for {category} not found: {file_path}")
+        if not file_path.exists():
+            st.warning(f"Candidate file for {category} not found: {file_path.name}")
             continue
         df = load_candidates(file_path)
         if df.empty:
@@ -88,11 +91,14 @@ elif code in codes:
         vote_data[category] = choice
     if st.button("Submit Vote"):
         new_vote = pd.DataFrame([vote_data])
-        if Path(VOTES_FILE).exists():
-            new_vote.to_csv(VOTES_FILE, mode="a", header=False, index=False)
-        else:
-            new_vote.to_csv(VOTES_FILE, index=False)
-        st.success("Your vote has been recorded. Thank you!")
+        try:
+            if VOTES_FILE.exists():
+                new_vote.to_csv(VOTES_FILE, mode="a", header=False, index=False)
+            else:
+                new_vote.to_csv(VOTES_FILE, index=False)
+            st.success("Your vote has been recorded. Thank you!")
+        except Exception as e:
+            st.error(f"Error saving vote: {e}")
         st.stop()
 else:
     st.error("Invalid code. Please try again.")
