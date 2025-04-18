@@ -15,7 +15,7 @@ CANDIDATE_FILES = {
 st.title("Simple Voting Service")
 
 # Show thank-you screen if redirected here
-params = st.experimental_get_query_params()
+params = st.query_params()
 if "thanks" in params:
     st.header("Thank You!")
     st.write("Your vote has been successfully recorded.")
