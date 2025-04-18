@@ -10,17 +10,16 @@ CANDIDATE_FILES = {
     "Kategorija B": ("candidates.xlsx", "candidates.csv"),
 }
 
-# Initialize vote flag
+# --- Session State Initialization ---------------------------------------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 if "voted" not in st.session_state:
     st.session_state.voted = False
-# Initialize clear_confirm
 if "clear_confirm" not in st.session_state:
     st.session_state.clear_confirm = 0
 
 # --- Helpers --------------------------------------------------------------------
-
 def find_file(name: str) -> Path | None:
-    """Case-insensitive file finder in app directory."""
     p = Path(name)
     if p.exists(): return p
     for f in Path().iterdir():
@@ -29,7 +28,6 @@ def find_file(name: str) -> Path | None:
 
 
 def load_codes() -> list[str]:
-    """Load valid voter codes from codes.csv or codes.xlsx."""
     for fname in ("codes.csv", "codes.xlsx"):
         path = find_file(fname)
         if path:
@@ -46,7 +44,6 @@ def load_codes() -> list[str]:
 
 
 def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
-    """Load candidate matrix for a category from CSV or XLSX."""
     for fname in (csv_name, xlsx_name):
         path = find_file(fname)
         if path:
@@ -58,54 +55,80 @@ def load_candidates(xlsx_name: str, csv_name: str) -> pd.DataFrame:
     st.error(f"No candidate file for {xlsx_name} or {csv_name}.")
     return pd.DataFrame()
 
-# Load valid codes once
-df_codes = load_codes()
+# --- Load valid codes ---------------------------------------------------------
+VALID_CODES = load_codes()
 
 # --- UI ------------------------------------------------------------------------
 st.title("Simple Voting Service")
 
-# Login input
+# Login form
 st.text_input("Enter your 5-character code:", key="code_input")
-code = st.session_state.get("code_input", "").strip()
-if not code:
-    st.stop()
+if not st.session_state.logged_in:
+    if st.button("Login"):
+        st.session_state.logged_in = True
+    else:
+        st.stop()
+code = st.session_state.code_input.strip()
 
-# --- Thank-you screen ---------------------------------------------------------
-if st.session_state.voted:
+# Thank-you screen for individual voter
+def show_thank_you():
     st.header("Thank You!")
     st.write("Your vote has been successfully recorded.")
-    if st.button("Back to login"):
-        st.session_state.voted = False
-        st.session_state.clear_confirm = 0
-        st.session_state.code_input = ""
+    # no back-to-login button needed
+
+if st.session_state.voted:
+    show_thank_you()
     st.stop()
 
 # --- Admin Dashboard ----------------------------------------------------------
 def show_admin():
     st.header("Admin Dashboard")
-    # Check if vote file exists and is non-empty
     if VOTE_FILE.exists():
         try:
             if VOTE_FILE.stat().st_size == 0:
                 st.info("No votes recorded yet.")
-            else:
-                votes_df = pd.read_csv(VOTE_FILE, dtype=str)
-                cats = [c for c in votes_df.columns if c != 'code']
-                if not cats:
-                    st.info("No votes recorded yet.")
-                else:
-                    for cat in cats:
-                        st.subheader(f"Top 10 for {cat}")
-                        counts = votes_df[cat].value_counts().head(10)
-                        if not counts.empty:
-                            df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
-                            st.table(df_top)
-                        else:
-                            st.info("No votes cast in this category yet.")
+                return
+            votes_df = pd.read_csv(VOTE_FILE, dtype=str)
         except pd.errors.EmptyDataError:
             st.info("No votes recorded yet.")
+            return
         except Exception as e:
             st.error(f"Error reading votes: {e}")
+            return
+        for cat in CANDIDATE_FILES.keys():
+            st.subheader(f"Top 10 for {cat}")
+            if cat in votes_df.columns:
+                counts = votes_df[cat].value_counts().head(10)
+                if not counts.empty:
+                    df_top = counts.rename_axis('Candidate').reset_index(name='Votes')
+                    st.table(df_top)
+                else:
+                    st.info("No votes cast in this category yet.")
+            else:
+                st.info("No votes cast in this category yet.")
+        st.download_button("Download full votes", open(VOTE_FILE, 'rb'), file_name=VOTE_FILE.name)
+        st.markdown("---")
+        st.subheader("Danger Zone: Clear All Votes")
+        if st.session_state.clear_confirm == 0:
+            if st.button("Clear All Votes"):
+                st.session_state.clear_confirm = 1
+        elif st.session_state.clear_confirm == 1:
+            st.warning("Are you sure?")
+            if st.button("Yes, clear votes", key="confirm1"):
+                st.session_state.clear_confirm = 2
+            if st.button("Cancel", key="cancel1"):
+                st.session_state.clear_confirm = 0
+        elif st.session_state.clear_confirm == 2:
+            st.error("Are you really really sure? This cannot be undone.")
+            if st.button("Yes, delete all votes", key="confirm2"):
+                try:
+                    VOTE_FILE.unlink()
+                    st.success("All votes cleared.")
+                except Exception as e:
+                    st.error(f"Error clearing votes: {e}")
+                st.session_state.clear_confirm = 0
+            if st.button("Cancel", key="cancel2"):
+                st.session_state.clear_confirm = 0
     else:
         st.info("No votes recorded yet.")
 
@@ -115,7 +138,7 @@ def show_voter():
     if VOTE_FILE.exists():
         try:
             existing = pd.read_csv(VOTE_FILE, dtype=str)
-            if code in existing.get('code', []).tolist():
+            if 'code' in existing.columns and code in existing['code'].tolist():
                 st.warning("Our records show you've already voted. Thank you!")
                 return
         except Exception:
@@ -138,7 +161,7 @@ def show_voter():
             errors.append(f"Choose a subcategory for {cat}.")
         if chosen_cand == "-- Select --":
             errors.append(f"Choose a candidate for {cat}.")
-        if chosen_sub != "-- Select --" and chosen_cand != "-- Select --":
+        else:
             vote[cat] = chosen_cand
 
     if st.button("Submit Vote"):
@@ -154,7 +177,7 @@ def show_voter():
 # --- Main Logic ---------------------------------------------------------------
 if code == ADMIN_CODE:
     show_admin()
-elif code in df_codes:
+elif code in VALID_CODES:
     show_voter()
 else:
     st.error("Invalid code.")
