@@ -1,15 +1,18 @@
 import streamlit as st, pandas as pd
 from pathlib import Path
 
+"""
+Čau! Nelien, kur nevajag! Paldies!
+"""
+
 # ────────── CONFIG ──────────────
 ADMIN_PASSWORD = st.secrets["auth"]["admin_password"]
 WIPE_PASSWORD  = st.secrets["auth"]["wipe_password"]
 
 VOTER_CODES = set(st.secrets["codes"]["list"])
 
-# Define all positions and their candidate files
 CANDIDATE_FILES = {
-    # Skolēnu nominācijas
+    #proletariāts
     "Lēdija": "skoleni.xlsx",
     "Ozols": "skoleni.xlsx",
     "Jokupēteris": "skoleni.xlsx",
@@ -20,7 +23,7 @@ CANDIDATE_FILES = {
     "Durasel zaķēns": "skoleni.xlsx",
     "Kultūras ministrs": "skoleni.xlsx",
     "Nākamais prezidents": "skoleni.xlsx",
-    # Skolotāju nominācijas
+    #buržuāzija
     "Interesantākā pieeja mācībām": "skolotaji.xlsx",
     "Skolas dvēsele": "skolotaji.xlsx",
     "Iedvesma": "skolotaji.xlsx",
