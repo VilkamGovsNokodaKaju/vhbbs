@@ -7,13 +7,34 @@ WIPE_PASSWORD  = st.secrets["auth"]["wipe_password"]
 
 VOTER_CODES = set(st.secrets["codes"]["list"])           
 
-POSITIONS = ["NominacijaA", "NominacijaB"]
-CANDIDATE_FILES = {            
-    "NominacijaA": "candidates.xlsx",
-    "NominacijaB": "candidates.xlsx",
+# Define all positions and their candidate files
+POSITIONS = [
+    "Lēdija", "Ozols", "Jokupēteris", "Gaiteņa simpātija", "Mūžīgais kavētājs", "Miegamice", "Vēsais čalis",
+    "Durasel zaķēns", "Kultūras ministrs", "Nākamais prezidents",
+    "Interesantākā pieeja mācībām", "Skolas dvēsele", "Iedvesma", "Kartotēka", "Modes ikona"
+]
+CANDIDATE_FILES = {
+    # Skolēnu nominācijas
+    "Lēdija": "skoleni.xlsx",
+    "Ozols": "skoleni.xlsx",
+    "Jokupēteris": "skoleni.xlsx",
+    "Gaiteņa simpātija": "skoleni.xlsx",
+    "Mūžīgais kavētājs": "skoleni.xlsx",
+    "Miegamice": "skoleni.xlsx",
+    "Vēsais čalis": "skoleni.xlsx",
+    "Durasel zaķēns": "skoleni.xlsx",
+    "Kultūras ministrs": "skoleni.xlsx",
+    "Nākamais prezidents": "skoleni.xlsx",
+    # Skolotāju nominācijas
+    "Interesantākā pieeja mācībām": "skolotaji.xlsx",
+    "Skolas dvēsele": "skolotaji.xlsx",
+    "Iedvesma": "skolotaji.xlsx",
+    "Kartotēka": "skolotaji.xlsx",
+    "Modes ikona": "skolotaji.xlsx"
 }
 
 VOTES_CSV = Path("votes.csv")
+
 # ────────── HELPERS ──────────────────────────────────────────────────────────
 def load_candidates(xlsx: str) -> pd.DataFrame:
     p = Path(xlsx)
@@ -64,7 +85,17 @@ if st.session_state.page == "admin":
     if votes.empty:
         st.info("Neviena balss nav reģistrēta")
     else:
-        for pos in POSITIONS:
+        for pos in [p for p, f in CANDIDATE_FILES.items() if f == "skoleni.xlsx"]:
+            st.subheader(f"Nominācijā {pos}")
+            if pos in votes.columns:
+                top = votes[pos].value_counts().head(7)
+                if top.empty:
+                    st.info("Neviena balss šajā pozīcijā nav reģistrēta")
+                else:
+                    st.table(top.rename_axis("Kandidāts").reset_index(name="Balsis"))
+            else:
+                st.info("Neviena balss šajā pozīcijā nav reģistrēta")
+        for pos in [p for p, f in CANDIDATE_FILES.items() if f == "skolotaji.xlsx"]:
             st.subheader(f"Nominācijā {pos}")
             if pos in votes.columns:
                 top = votes[pos].value_counts().head(7)
@@ -101,24 +132,45 @@ if st.session_state.page == "admin":
 if st.session_state.page == "vote":
     st.title("Balso!")
     selections, errs = {}, []
-    for pos in POSITIONS:
+
+    # Student nominations
+    st.header("Skolēnu nominācijas")
+    for pos in [p for p, f in CANDIDATE_FILES.items() if f == "skoleni.xlsx"]:
         st.subheader(pos)
         df = load_candidates(CANDIDATE_FILES[pos])
         if df.empty:
             st.error(f"Nav atrasts kandidātu fails {pos}."); st.stop()
-        sub = st.selectbox("Meklēt klasē/sadaļā...", [""]+df.columns.tolist(), key=f"s_{pos}")
+        sub = st.selectbox("Meklēt klasē/sadaļā...", [""] + df.columns.tolist(), key=f"s_{pos}")
         if not sub:
-            errs.append(f"Izvēlēties klasi/sadaļu nominācijā {pos}"); continue
-        cand = st.selectbox("Kandidāts", [""]+df[sub].dropna().tolist(), key=f"c_{pos}")
+            errs.append(f"Izvēlēties klasi/sadaļu nominācijā {pos}")
+            continue
+        cand = st.selectbox("Kandidāts", [""] + df[sub].dropna().tolist(), key=f"c_{pos}")
         if not cand:
             errs.append(f"Nominācija {pos}")
         else:
             selections[pos] = cand
+
+    # Teacher nominations
+    st.header("Skolotāju nominācijas")
+    for pos in [p for p, f in CANDIDATE_FILES.items() if f == "skolotaji.xlsx"]:
+        st.subheader(pos)
+        df = load_candidates(CANDIDATE_FILES[pos])
+        if df.empty:
+            st.error(f"Nav atrasts kandidātu fails {pos}."); st.stop()
+        sub = st.selectbox("Meklēt klasi/sadaļu...", [""] + df.columns.tolist(), key=f"s_{pos}")
+        if not sub:
+            errs.append(f"Izvēlēties klasi/sadaļu nominācijā {pos}")
+            continue
+        cand = st.selectbox("Kandidāts", [""] + df[sub].dropna().tolist(), key=f"c_{pos}")
+        if not cand:
+            errs.append(f"Nominācija {pos}")
+        else:
+            selections[pos] = cand
+
     if st.button("Iesniegt balsojumu"):
         if errs:
             st.error(" • ".join(errs))
         else:
             save_vote({"code": st.session_state.user_code, **selections})
             st.success("Balss saglabāta! Paldies!")
-            st.session_state.page = "login" 
-
+            st.session_state.page = "login"
