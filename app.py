@@ -9,21 +9,22 @@ from pathlib import Path
 ADMIN_PASSWORD = st.secrets["auth"]["admin_password"]
 WIPE_PASSWORD  = st.secrets["auth"]["wipe_password"]
 
-# Katras nominācijas konfigurācija: kandidātu fails un apraksts zem nosaukuma
+VOTER_CODES = set(st.secrets["codes"]["list"])
+
 CANDIDATE_FILES = {
     # proletariāts
     "Lēdija": {"file": "skoleni.xlsx", "description": "Šo meiteni neievērot skolas gaiteņis nevar, jo vienmēr būs kāds džentelmenis, kas tai pasniegs roku, lai nepakrīt. Viņa pat 8:00 no rītā, matemātikas stundā spīdēs, jo “slikta matu diena” vai “skolas gaiss” uz viņu neattiecās. Tu vai nu gribi šo dāmu apprecēt, vai kļūt par viņu."},
     "Ozols": {"file": "skoleni.xlsx", "description": "Godinām staltāko džeku, kurš, tāpat kā ozols, izceļas ar stingru raksturu, atbildību un spēju stāties pretī jebkādām grūtībām."},
-    "Jokupēteris": {"file": "skoleni.xlsx", "description": "Šis ir cilvēks, kurš vienmēr spēj uzlabot dienu ar vienu labu joku vai asprātīgu piezīmi. Viņa humors nav tikai smieklīgs – tas saliedē, iepriecina un atgādina, ka arī visnopietnākajos brīžos ir vieta smaidam."},
+    "Jokupēteris": {"file": "skoleni.xlsx", "description": "Šis ir cilvēks, kurš vienmēr spēj uzlabot dienu ar vienu labu joku vai asprātīgu piezīmi. Viņa humors nav tikai smieklīgs – tas saliedē, iepriecina un atgādina, ka arī visnopietnākajos brīžos ir vieta smaidam."},
     "Gaiteņa simpātija": {"file": "skoleni.xlsx", "description": "Īss apraksts par nomināciju Gaiteņa simpātija."},
-    "Mūžīgais kavētājs": {"file": "skoleni.xlsx", "description": " Ja kavēšana būtu māksla, šis cilvēks jau sen būtu ieguvis zelta medaļu. Stundas sākas bez viņa, reizēm arī beidzas bez viņa. Vienmēr ceļā, bet reti galā laikā."},
+    "Mūžīgais kavētājs": {"file": "skoleni.xlsx", "description": "Ja kavēšana būtu māksla, šis cilvēks jau sen būtu ieguvis zelta medaļu. Stundas sākas bez viņa, reizēm arī beidzas bez viņa. Vienmēr ceļā, bet reti galā laikā."},
     "Miegamice": {"file": "skoleni.xlsx", "description": "Godinām skolēnu, kurš stundās visbiežāk dodas sapņu valstībā un spēj iemigt pat visaktīvākajās nodarbībās."},
-    "Vēsais čalis": {"file": "skoleni.xlsx", "description": "Šis puisis ir īstākā miera un nosvērtības personifikācija. Viņš nekad neuztver neko pārāk nopietni un nezin tādu terminu kā “stress”. Šis zēns ķers uzmanību pat necenšoties un lai gan, parasti komunicē īsos, nepaplašinātis teikumos, viņš būs Tavs pats labākais padomdevējs."},
-    "Durasel zaķēns": {"file": "skoleni.xlsx", "description": "Draugs, kuram pēc desmitās stundas vēljoprojām ir enerğija, allaž uzlādēts un vienmēr gatavs jokoties - īsts “Durasel” bateriju zaķēns."},
+    "Vēsais čalis": {"file": "skoleni.xlsx", "description": "Šis puisis ir īstākā miera un nosvērtības personifikācija. Viņš nekad neuztver neko pārāk nopietni un nezin tādu terminu kā “stress”. Šis zēns ķers uzmanību pat necenšoties un lai gan, parasti komunicē īsos, nepārliešanu teikumos, viņš būs Tavs pats labākais padomdevējs."},
+    "Durasel zaķēns": {"file": "skoleni.xlsx", "description": "Draugs, kuram pēc desmitās stundas vēl joprojām ir enerģija, allaž uzlādēts un vienmēr gatavs jokoties - īsts “Durasel” bateriju zaķēns."},
     "Kultūras ministrs": {"file": "skoleni.xlsx", "description": "Šī nominācija ir domāta skolēnam, kurš ienes kultūru mūsu skolas ikdienā – gan caur radošām idejām, gan reāliem darbiem. Viņš vai viņa ir tas cilvēks, kurš ar aizrautību iesaistās pasākumu veidošanā, liekot mums visiem justies kā daļai no kaut kā īpaša."},
     "Nākamais prezidents": {"file": "skoleni.xlsx", "description": "Šī persona piedzimusi ar līdera gēnu – harizmātiska, pārliecināta un vienmēr ar viedokli. Spēj saliedēt cilvēkus ap sevi un risināt problēmas. Debates? Uzvarētas. Plāns? Vienmēr ir. Ja kāds spēj mainīt pasauli – tad tas ir viņš vai viņa."},
     # buržuāzija
-    "Interesantākā pieeja mācībām": {"file": "skolotaji.xlsx", "description": "Skolotājs, kas mācību vielu padara ne tikai izzinošu, bet arī jautru. Nominē skolotāju, lai tam izrādītu pateicību par oriğinālākajām stundām."},
+    "Interesantākā pieeja mācībām": {"file": "skolotaji.xlsx", "description": "Skolotājs, kas mācību vielu padara ne tikai izzinošu, bet arī jautru. Nominē skolotāju, lai tam izrādītu pateicību par oriģinālākajām stundām."},
     "Skolas dvēsele": {"file": "skolotaji.xlsx", "description": "Pedagogs, kura sirds pukst skolas gaitenī kā silta saules stari pavasara rītā, iedvesmojot katru smaidīt."},
     "Iedvesma": {"file": "skolotaji.xlsx", "description": "Vārdi lido kā krāsainas spalvas, kad “Iedvesmas” pasniedzējs ar asprātīgiem stāstiem un drosmīgu attieksmi atver durvis jaunām idejām un liek audzēkņiem pacelties pāri ierastajam."},
     "Kartotēka": {"file": "skolotaji.xlsx", "description": "Vieds cilvēks ar vēl viedākiem vārdiem. Ar skanīgu citātu gēnu apveltīts skolotājs, kas spēj ar savu valodu gan likt redzēt dzīvi no jaunas puses, gan nolikt kādu pie vietas."},
