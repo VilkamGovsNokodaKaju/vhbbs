@@ -1,9 +1,7 @@
 import streamlit as st, pandas as pd
 from pathlib import Path
 
-"""
-Čau! Nelien, kur nevajag! Paldies!
-"""
+#ČAU, NELIEN KUR NEVAJAG, PALDIEEEEEEEES!
 
 # ────────── CONFIG ──────────────
 ADMIN_PASSWORD = st.secrets["auth"]["admin_password"]
