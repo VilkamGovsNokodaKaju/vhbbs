@@ -1,7 +1,7 @@
 import streamlit as st, pandas as pd
 from pathlib import Path
 
-#ČAU, NELIEN KUR NEVAJAG, PALDIEEEEEEEES!
+# ČAU, NELIEN KUR NEVAJAG, PALDIEEEEEEEES!
 
 # ────────── CONFIG ──────────────
 ADMIN_PASSWORD = st.secrets["auth"]["admin_password"]
@@ -32,11 +32,16 @@ CANDIDATE_FILES = {
 VOTES_CSV = Path("votes.csv")
 
 # ────────── HELPERS ──────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False)
 def load_candidates(xlsx: str) -> pd.DataFrame:
     p = Path(xlsx)
     if not p.exists():
         return pd.DataFrame()
     return pd.read_excel(p, dtype=str).dropna(axis=1, how="all")
+
+# Preload both sheets once per session/process
+df_skoleni = load_candidates("skoleni.xlsx")
+df_skolotaji = load_candidates("skolotaji.xlsx")
 
 def load_votes() -> pd.DataFrame:
     if VOTES_CSV.exists() and VOTES_CSV.stat().st_size:
@@ -133,12 +138,12 @@ if st.session_state.page == "vote":
         desc = cfg.get("description", "")
         if desc:
             st.write(desc)
-        df = load_candidates(cfg["file"])
+        df = df_skoleni  # cached DataFrame
         if df.empty:
             st.error(f"Nav atrasts kandidātu fails {cfg['file']} for {pos}.")
             continue
         sub = st.selectbox(
-            f"{pos}: Meklēt klasē/sadaļā...",
+            f"{pos}: Meklēt klasē/sadaļā...", 
             [""] + df.columns.tolist(),
             key=f"s_{pos}"
         )
@@ -146,7 +151,7 @@ if st.session_state.page == "vote":
             errs.append(f"Izvēlēties klasi/sadaļu nominācijā {pos}")
             continue
         cand = st.selectbox(
-            f"{pos}: Kandidāts",
+            f"{pos}: Kandidāts", 
             [""] + df[sub].dropna().tolist(),
             key=f"c_{pos}"
         )
@@ -164,12 +169,12 @@ if st.session_state.page == "vote":
         desc = cfg.get("description", "")
         if desc:
             st.write(desc)
-        df = load_candidates(cfg["file"])
+        df = df_skolotaji  # cached DataFrame
         if df.empty:
             st.error(f"Nav atrasts kandidātu fails {cfg['file']} for {pos}.")
             continue
         sub = st.selectbox(
-            f"{pos}: Meklēt sadaļā...",
+            f"{pos}: Meklēt sadaļā...", 
             [""] + df.columns.tolist(),
             key=f"s_{pos}"
         )
@@ -177,7 +182,7 @@ if st.session_state.page == "vote":
             errs.append(f"Izvēlēties sadaļu nominācijā {pos}")
             continue
         cand = st.selectbox(
-            f"{pos}: Kandidāts",
+            f"{pos}: Kandidāts", 
             [""] + df[sub].dropna().tolist(),
             key=f"c_{pos}"
         )
