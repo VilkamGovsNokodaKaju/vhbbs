@@ -11,22 +11,22 @@ VOTER_CODES = set(st.secrets["codes"]["list"])
 
 CANDIDATE_FILES = {
     # proletariāts
-    "Lēdija": {"file": "skoleni.xlsx", "description": "Šo meiteni neievērot skolas gaiteņis nevar, jo vienmēr būs kāds džentelmenis, kas tai pasniegs roku, lai nepakrīt. Viņa pat 8:00 no rītā, matemātikas stundā spīdēs, jo “slikta matu diena” vai “skolas gaiss” uz viņu neattiecās. Tu vai nu gribi šo dāmu apprecēt, vai kļūt par viņu."},
-    "Ozols": {"file": "skoleni.xlsx", "description": "Godinām staltāko džeku, kurš, tāpat kā ozols, izceļas ar stingru raksturu, atbildību un spēju stāties pretī jebkādām grūtībām."},
-    "Jokupēteris": {"file": "skoleni.xlsx", "description": "Šis ir cilvēks, kurš vienmēr spēj uzlabot dienu ar vienu labu joku vai asprātīgu piezīmi. Viņa humors nav tikai smieklīgs – tas saliedē, iepriecina un atgādina, ka arī visnopietnākajos brīžos ir vieta smaidam."},
-    "Gaiteņa simpātija": {"file": "skoleni.xlsx", "description": "Tas skolēns, kuru redzot gaiteņos, jāpaskatās divreiz. Kurš simpātiskais garāmgājējs iekarojis tavu sirdi?"},
-    "Mūžīgais kavētājs": {"file": "skoleni.xlsx", "description": "Ja kavēšana būtu māksla, šis cilvēks jau sen būtu ieguvis zelta medaļu. Stundas sākas bez viņa, reizēm arī beidzas bez viņa. Vienmēr ceļā, bet reti galā laikā."},
-    "Miegamice": {"file": "skoleni.xlsx", "description": "Godinām skolēnu, kurš stundās visbiežāk dodas sapņu valstībā un spēj iemigt pat visaktīvākajās nodarbībās."},
-    "Vēsais čalis": {"file": "skoleni.xlsx", "description": "Šis puisis ir īstākā miera un nosvērtības personifikācija. Viņš nekad neuztver neko pārāk nopietni un nezin tādu terminu kā “stress”. Šis zēns ķers uzmanību pat necenšoties un lai gan, parasti komunicē īsos, nepārliešanu teikumos, viņš būs Tavs pats labākais padomdevējs."},
-    "Durasel zaķēns": {"file": "skoleni.xlsx", "description": "Draugs, kuram pēc desmitās stundas vēl joprojām ir enerģija, allaž uzlādēts un vienmēr gatavs jokoties - īsts “Durasel” bateriju zaķēns."},
-    "Kultūras ministrs": {"file": "skoleni.xlsx", "description": "Šī nominācija ir domāta skolēnam, kurš ienes kultūru mūsu skolas ikdienā – gan caur radošām idejām, gan reāliem darbiem. Viņš vai viņa ir tas cilvēks, kurš ar aizrautību iesaistās pasākumu veidošanā, liekot mums visiem justies kā daļai no kaut kā īpaša."},
-    "Nākamais prezidents": {"file": "skoleni.xlsx", "description": "Šī persona piedzimusi ar līdera gēnu – harizmātiska, pārliecināta un vienmēr ar viedokli. Spēj saliedēt cilvēkus ap sevi un risināt problēmas. Debates? Uzvarētas. Plāns? Vienmēr ir. Ja kāds spēj mainīt pasauli – tad tas ir viņš vai viņa."},
+    "Lēdija": {"file": "ledija.xlsx", "description": "Šo meiteni neievērot skolas gaiteņis nevar, jo vienmēr būs kāds džentelmenis, kas tai pasniegs roku, lai nepakrīt. Viņa pat 8:00 no rītā, matemātikas stundā spīdēs, jo “slikta matu diena” vai “skolas gaiss” uz viņu neattiecās. Tu vai nu gribi šo dāmu apprecēt, vai kļūt par viņu."},
+    "Ozols": {"file": "ozols.xlsx", "description": "Godinām staltāko džeku, kurš, tāpat kā ozols, izceļas ar stingru raksturu, atbildību un spēju stāties pretī jebkādām grūtībām."},
+    "Jokupēteris": {"file": "jokupeteris.xlsx", "description": "Šis ir cilvēks, kurš vienmēr spēj uzlabot dienu ar vienu labu joku vai asprātīgu piezīmi. Viņa humors nav tikai smieklīgs – tas saliedē, iepriecina un atgādina, ka arī visnopietnākajos brīžos ir vieta smaidam."},
+    "Gaiteņa simpātija": {"file": "simpatija.xlsx", "description": "Tas skolēns, kuru redzot gaiteņos, jāpaskatās divreiz. Kurš simpātiskais garāmgājējs iekarojis tavu sirdi?"},
+    "Mūžīgais kavētājs": {"file": "kavetajs.xlsx", "description": "Ja kavēšana būtu māksla, šis cilvēks jau sen būtu ieguvis zelta medaļu. Stundas sākas bez viņa, reizēm arī beidzas bez viņa. Vienmēr ceļā, bet reti galā laikā."},
+    "Miegamice": {"file": "miegamice.xlsx", "description": "Godinām skolēnu, kurš stundās visbiežāk dodas sapņu valstībā un spēj iemigt pat visaktīvākajās nodarbībās."},
+    "Vēsais čalis": {"file": "vesais.xlsx", "description": "Šis puisis ir īstākā miera un nosvērtības personifikācija. Viņš nekad neuztver neko pārāk nopietni un nezin tādu terminu kā “stress”. Šis zēns ķers uzmanību pat necenšoties un lai gan, parasti komunicē īsos, nepārliešanu teikumos, viņš būs Tavs pats labākais padomdevējs."},
+    "Durasel zaķēns": {"file": "zakens.xlsx", "description": "Draugs, kuram pēc desmitās stundas vēl joprojām ir enerģija, allaž uzlādēts un vienmēr gatavs jokoties - īsts “Durasel” bateriju zaķēns."},
+    "Kultūras ministrs": {"file": "kultura.xlsx", "description": "Šī nominācija ir domāta skolēnam, kurš ienes kultūru mūsu skolas ikdienā – gan caur radošām idejām, gan reāliem darbiem. Viņš vai viņa ir tas cilvēks, kurš ar aizrautību iesaistās pasākumu veidošanā, liekot mums visiem justies kā daļai no kaut kā īpaša."},
+    "Nākamais prezidents": {"file": "prezidents.xlsx", "description": "Šī persona piedzimusi ar līdera gēnu – harizmātiska, pārliecināta un vienmēr ar viedokli. Spēj saliedēt cilvēkus ap sevi un risināt problēmas. Debates? Uzvarētas. Plāns? Vienmēr ir. Ja kāds spēj mainīt pasauli – tad tas ir viņš vai viņa."},
     # buržuāzija
-    "Interesantākā pieeja mācībām": {"file": "skolotaji.xlsx", "description": "Skolotājs, kas mācību vielu padara ne tikai izzinošu, bet arī jautru. Nominē skolotāju, lai tam izrādītu pateicību par oriģinālākajām stundām."},
-    "Skolas dvēsele": {"file": "skolotaji.xlsx", "description": "Pedagogs, kura sirds pukst skolas gaitenī kā silta saules stari pavasara rītā, iedvesmojot katru smaidīt."},
-    "Iedvesma": {"file": "skolotaji.xlsx", "description": "Vārdi lido kā krāsainas spalvas, kad “Iedvesmas” pasniedzējs ar asprātīgiem stāstiem un drosmīgu attieksmi atver durvis jaunām idejām un liek audzēkņiem pacelties pāri ierastajam."},
-    "Kartotēka": {"file": "skolotaji.xlsx", "description": "Vieds cilvēks ar vēl viedākiem vārdiem. Ar skanīgu citātu gēnu apveltīts skolotājs, kas spēj ar savu valodu gan likt redzēt dzīvi no jaunas puses, gan nolikt kādu pie vietas."},
-    "Modes ikona": {"file": "skolotaji.xlsx", "description": "Šis skolotājs skolēnu acīm vienmēr pamanāms ar raibāko, radošāko un košāko apģērbu, allaž izzinot vai pat veidojot jaunākās modes tendences."}
+    "Interesantākā pieeja mācībām": {"file": "pieeja.xlsx", "description": "Skolotājs, kas mācību vielu padara ne tikai izzinošu, bet arī jautru. Nominē skolotāju, lai tam izrādītu pateicību par oriģinālākajām stundām."},
+    "Skolas dvēsele": {"file": "dvesele.xlsx", "description": "Pedagogs, kura sirds pukst skolas gaitenī kā silta saules stari pavasara rītā, iedvesmojot katru smaidīt."},
+    "Iedvesma": {"file": "iedvesma.xlsx", "description": "Vārdi lido kā krāsainas spalvas, kad “Iedvesmas” pasniedzējs ar asprātīgiem stāstiem un drosmīgu attieksmi atver durvis jaunām idejām un liek audzēkņiem pacelties pāri ierastajam."},
+    "Kartotēka": {"file": "kartoteka.xlsx", "description": "Vieds cilvēks ar vēl viedākiem vārdiem. Ar skanīgu citātu gēnu apveltīts skolotājs, kas spēj ar savu valodu gan likt redzēt dzīvi no jaunas puses, gan nolikt kādu pie vietas."},
+    "Modes ikona": {"file": "mode.xlsx", "description": "Šis skolotājs skolēnu acīm vienmēr pamanāms ar raibāko, radošāko un košāko apģērbu, allaž izzinot vai pat veidojot jaunākās modes tendences."}
 }
 
 VOTES_CSV = Path("votes.csv")
@@ -135,24 +135,17 @@ if st.session_state.page == "vote":
         if cfg["file"] != "skoleni.xlsx":
             continue
         st.subheader(pos)
-        desc = cfg.get("description", "")
-        if desc:
-            st.write(desc)
-        df = df_skoleni  # cached DataFrame
+        if cfg.get("description"):
+            st.write(cfg["description"])
+        df = df_skoleni
         if df.empty:
             st.error(f"Nav atrasts kandidātu fails {cfg['file']} for {pos}.")
             continue
-        sub = st.selectbox(
-            f"{pos}: Meklēt klasē/sadaļā...", 
-            [""] + df.columns.tolist(),
-            key=f"s_{pos}"
-        )
-        if not sub:
-            errs.append(f"Izvēlēties klasi/sadaļu nominācijā {pos}")
-            continue
+        # Flatten all candidates without subsections
+        candidates = sorted(df.stack().dropna().unique().tolist())
         cand = st.selectbox(
-            f"{pos}: Kandidāts", 
-            [""] + df[sub].dropna().tolist(),
+            f"{pos}: Kandidāts",
+            [""] + candidates,
             key=f"c_{pos}"
         )
         if not cand:
@@ -166,24 +159,17 @@ if st.session_state.page == "vote":
         if cfg["file"] != "skolotaji.xlsx":
             continue
         st.subheader(pos)
-        desc = cfg.get("description", "")
-        if desc:
-            st.write(desc)
-        df = df_skolotaji  # cached DataFrame
+        if cfg.get("description"):
+            st.write(cfg["description"])
+        df = df_skolotaji
         if df.empty:
             st.error(f"Nav atrasts kandidātu fails {cfg['file']} for {pos}.")
             continue
-        sub = st.selectbox(
-            f"{pos}: Meklēt sadaļā...", 
-            [""] + df.columns.tolist(),
-            key=f"s_{pos}"
-        )
-        if not sub:
-            errs.append(f"Izvēlēties sadaļu nominācijā {pos}")
-            continue
+        # Flatten all candidates without subsections
+        candidates = sorted(df.stack().dropna().unique().tolist())
         cand = st.selectbox(
-            f"{pos}: Kandidāts", 
-            [""] + df[sub].dropna().tolist(),
+            f"{pos}: Kandidāts",
+            [""] + candidates,
             key=f"c_{pos}"
         )
         if not cand:
