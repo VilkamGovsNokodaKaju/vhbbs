@@ -117,3 +117,4 @@ if st.session_state.page == "admin":
                 st.error("Nepareiza dzēšanas parole")
             st.session_state.wipe_step = 0
         if col2.button("Atcelt"):
+            st.session_state.wipe_step = 0
